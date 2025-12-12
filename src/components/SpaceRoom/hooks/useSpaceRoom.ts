@@ -43,7 +43,7 @@ export function useSpaceRoom() {
     const [privateChats, setPrivateChats] = useState<Map<string, PrivateChatMessage[]>>(new Map());
     const [notification, setNotification] = useState<Notification | null>(null);
 
-    const { createOffer, closePeerConnection, remoteStreams } = useWebRTC(
+    const { createOffer, closePeerConnection, remoteStreams, hasPeer } = useWebRTC(
         localStream,
         spaceId,
         socketReady
@@ -456,23 +456,38 @@ export function useSpaceRoom() {
         const currentNearbyUserIds = new Set(nearbyPlayers.map(p => p.userId));
         const previousUserIds = previousNearbyUsers.current;
 
+        console.log('📍 Proximity update:', {
+            nearbyCount: currentNearbyUserIds.size,
+            previousCount: previousUserIds.size,
+            nearbyIds: [...currentNearbyUserIds],
+            myPosition: { x: Math.round(myPosition.x), y: Math.round(myPosition.y) }
+        });
+
         const newUsers = [...currentNearbyUserIds].filter(id => !previousUserIds.has(id));
         const leftUsers = [...previousUserIds].filter(id => !currentNearbyUserIds.has(id));
 
-        // Always create/connect to nearby users, regardless of our own video state
-        // This allows us to see/hear them even if we are not broadcasting
+        // 1. Connect to NEW nearby users
         newUsers.forEach(userId => {
-            console.log('Creating offer for nearby user:', userId);
+            console.log('Creating offer for NEW nearby user:', userId);
             createOffer(userId);
         });
 
+        // 2. Disconnect from users who moved away
         leftUsers.forEach(userId => {
             console.log('Closing connection for user who moved away:', userId);
             closePeerConnection(userId);
         });
 
+        // 3. RETRY connection for nearby users if we don't have a peer (Healing)
+        currentNearbyUserIds.forEach(userId => {
+            if (!hasPeer(userId)) {
+                console.log('⚠️ Missing peer connection for nearby user, retrying:', userId);
+                createOffer(userId);
+            }
+        });
+
         previousNearbyUsers.current = currentNearbyUserIds;
-    }, [nearbyPlayers, createOffer, closePeerConnection]);
+    }, [nearbyPlayers, createOffer, closePeerConnection, hasPeer]);
 
     return {
         // Refs

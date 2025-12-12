@@ -368,9 +368,15 @@ export function useWebRTC(myStream: MediaStream | null, spaceId: string | undefi
         };
     }, []);
 
+    // Check if peer connection exists
+    const hasPeer = useCallback((userId: string) => {
+        return peerConnections.current.has(userId);
+    }, []);
+
     return {
         createOffer,
         closePeerConnection,
         remoteStreams,
+        hasPeer
     };
 }
