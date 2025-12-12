@@ -401,8 +401,37 @@ export class MapScene extends Phaser.Scene {
         this.updateFogOfWar();
     }
 
+    private fogGraphics: Phaser.GameObjects.Graphics | null = null;
+    private readonly PROXIMITY_RADIUS = 300; // Match frontend proximity setting
+
     updateFogOfWar() {
-        // Fog of War removed as per user request
+        if (!this.player) return;
+
+        // Create fog graphics if it doesn't exist
+        if (!this.fogGraphics) {
+            this.fogGraphics = this.add.graphics();
+            this.fogGraphics.setDepth(1000); // Above everything except UI
+        }
+
+        this.fogGraphics.clear();
+
+        const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+        const playerX = playerBody.center.x;
+        const playerY = playerBody.center.y;
+
+        // Draw subtle dim overlay everywhere except near player
+        // Top area
+        this.fogGraphics.fillStyle(0x000000, 0.3);
+        this.fogGraphics.fillRect(0, 0, 2000, Math.max(0, playerY - this.PROXIMITY_RADIUS));
+
+        // Bottom area
+        this.fogGraphics.fillRect(0, playerY + this.PROXIMITY_RADIUS, 2000, 1500 - (playerY + this.PROXIMITY_RADIUS));
+
+        // Left area
+        this.fogGraphics.fillRect(0, playerY - this.PROXIMITY_RADIUS, Math.max(0, playerX - this.PROXIMITY_RADIUS), this.PROXIMITY_RADIUS * 2);
+
+        // Right area
+        this.fogGraphics.fillRect(playerX + this.PROXIMITY_RADIUS, playerY - this.PROXIMITY_RADIUS, 2000 - (playerX + this.PROXIMITY_RADIUS), this.PROXIMITY_RADIUS * 2);
     }
 
     drawAllRooms() {
