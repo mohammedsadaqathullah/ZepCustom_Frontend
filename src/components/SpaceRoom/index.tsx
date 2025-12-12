@@ -53,7 +53,8 @@ export default function SpaceRoom() {
         sendMessage,
         navigate,
         spaceId,
-        user
+        user,
+        socket
     } = useSpaceRoom();
 
     return (
@@ -79,10 +80,11 @@ export default function SpaceRoom() {
                     justifyContent: 'center'
                 }}>
                     <PhaserGame
-                        socket={null}
+                        socket={socket}
                         userId={user?.id}
                         userName={user?.displayName}
                         spaceId={spaceId}
+                        players={players}
                     />
                 </div>
 

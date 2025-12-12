@@ -17,7 +17,7 @@ export function useSpaceRoom() {
     // Refs
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
-    const animationFrameRef = useRef<number>();
+    const animationFrameRef = useRef<number | undefined>(undefined);
     const defaultAvatars = useRef<Map<string, AvatarConfig>>(new Map());
     const previousNearbyUsers = useRef<Set<string>>(new Set());
 
@@ -502,6 +502,7 @@ export function useSpaceRoom() {
         getPlayerAvatar,
         navigate,
         spaceId,
-        user
+        user,
+        socket: socketService.getSocket()
     };
 }

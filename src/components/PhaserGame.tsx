@@ -9,9 +9,10 @@ interface PhaserGameProps {
     userId?: string;
     userName?: string;
     spaceId?: string;
+    players?: Map<string, any>;
 }
 
-const PhaserGame: React.FC<PhaserGameProps> = ({ socket, userId, userName, spaceId }) => {
+const PhaserGame: React.FC<PhaserGameProps> = ({ socket, userId, userName, spaceId, players }) => {
     const gameRef = useRef<Phaser.Game | null>(null);
     const sceneRef = useRef<MapScene | null>(null);
 
@@ -74,17 +75,31 @@ const PhaserGame: React.FC<PhaserGameProps> = ({ socket, userId, userName, space
         };
     }, []);
 
+    // Update players when map changes
+    useEffect(() => {
+        if (sceneRef.current && players) {
+            sceneRef.current.updatePlayers(players);
+        }
+    }, [players]);
+
     // Update scene when props change
     useEffect(() => {
         if (sceneRef.current && socket && userId && userName && spaceId) {
-            sceneRef.current.scene.restart({
-                rooms: MAP_CONFIG.rooms,
-                vehicles: MAP_CONFIG.vehicles,
-                socket,
-                userId,
-                userName,
-                spaceId
-            });
+            // We don't want to restart the scene every time socket/user changes if it's just a reconnect
+            // But for now keeping original logic to ensure init data is fresh
+            // Careful: updatePlayers should be separate so we don't reset the scene on every movement
+
+            // Check if scene is running, if not restart
+            if (!sceneRef.current.scene.isActive()) {
+                sceneRef.current.scene.restart({
+                    rooms: MAP_CONFIG.rooms,
+                    vehicles: MAP_CONFIG.vehicles,
+                    socket,
+                    userId,
+                    userName,
+                    spaceId
+                });
+            }
         }
     }, [socket, userId, userName, spaceId]);
 

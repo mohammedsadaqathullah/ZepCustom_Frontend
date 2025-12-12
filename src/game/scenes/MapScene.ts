@@ -47,6 +47,102 @@ export class MapScene extends Phaser.Scene {
     private lastX: number = 0;
     private lastY: number = 0;
     private vehicleMap: Map<string, Phaser.GameObjects.Container> = new Map();
+    private otherPlayers: Map<string, Phaser.GameObjects.Container> = new Map();
+
+    public updatePlayers(players: Map<string, any>) {
+        // 1. Update or create players
+        players.forEach((playerData, playerId) => {
+            if (playerId === this.socket?.id) return; // Skip local player (handled by local movement) - wait, socket.id might vary. safer to check userId if available or just rely on ID mismatch if we passed local ID.
+            // Actually, we should skip our OWN user based on userId if possible, or expect the parent to filter. 
+            // Better: Check against this.socket.id if available, or a passed userId.
+
+            if (this.otherPlayers.has(playerId)) {
+                this.updateOtherPlayer(playerId, playerData);
+            } else {
+                this.addOtherPlayer(playerId, playerData);
+            }
+        });
+
+        // 2. Remove players who left
+        this.otherPlayers.forEach((_, playerId) => {
+            if (!players.has(playerId)) {
+                this.removeOtherPlayer(playerId);
+            }
+        });
+    }
+
+    private addOtherPlayer(playerId: string, data: any) {
+        console.log('Adding other player:', playerId, data);
+        const container = this.createAvatarContainer(data.userName || 'User', false);
+        container.setPosition(data.x, data.y);
+        this.add.existing(container);
+        this.otherPlayers.set(playerId, container);
+    }
+
+    private updateOtherPlayer(playerId: string, data: any) {
+        const container = this.otherPlayers.get(playerId);
+        if (container) {
+            // Smooth interpolation could go here, for now just teleport
+            // container.setPosition(data.x, data.y); 
+            // actually, let's tween it for smoothness
+            this.tweens.add({
+                targets: container,
+                x: data.x,
+                y: data.y,
+                duration: 100, // Update rate matches
+                ease: 'Linear'
+            });
+
+            // Update visuals based on direction/isWalking if needed (skipped for brevity, adding basic)
+        }
+    }
+
+    private removeOtherPlayer(playerId: string) {
+        console.log('Removing other player:', playerId);
+        const container = this.otherPlayers.get(playerId);
+        if (container) {
+            container.destroy();
+            this.otherPlayers.delete(playerId);
+        }
+    }
+
+    private createAvatarContainer(userName: string, isLocal: boolean): Phaser.GameObjects.Container {
+        const container = this.add.container(0, 0);
+
+        // Shadow/Under
+        const shadow = this.add.ellipse(0, 10, 24, 8, 0x000000, 0.3);
+        container.add(shadow);
+
+        // Legs (Static for remote for now, or animated if we track walking)
+        const leftLeg = this.add.rectangle(-6, 8, 8, 14, 0x1565c0);
+        const rightLeg = this.add.rectangle(6, 8, 8, 14, 0x1565c0);
+        container.add(leftLeg);
+        container.add(rightLeg);
+
+        // Body
+        const body = this.add.circle(0, 0, 12, isLocal ? 0xff5722 : 0x4caf50); // Orange for local, Green for remote
+        container.add(body);
+
+        // Head (Simple)
+        const head = this.add.circle(0, -14, 10, 0xffcc80);
+        container.add(head);
+
+        // Name Tag
+        const nameBg = this.add.rectangle(0, -35, 60, 20, 0x000000, 0.5);
+        // nameBg.setOrigin(0.5); // Rectangle default origin is 0.5
+        container.add(nameBg);
+
+        const nameText = this.add.text(0, -35, userName, {
+            fontSize: '12px',
+            color: '#ffffff',
+            align: 'center'
+        });
+        nameText.setOrigin(0.5);
+        container.add(nameText);
+
+        container.setDepth(isLocal ? 100 : 90);
+        return container;
+    }
 
 
 
@@ -888,134 +984,23 @@ export class MapScene extends Phaser.Scene {
         );
     }
 
+
+
     createPlayer() {
-        const container = this.add.container(1000, 750); // Start in reception
+        console.log('createPlayer called');
+        const startX = 340;
+        const startY = 500;
 
-        // Legs (Animated)
-        this.playerLegs = this.add.graphics();
-        container.add(this.playerLegs);
-        this.drawLegs(0); // Initial draw
+        // Use shared helper
+        this.player = this.createAvatarContainer('You', true);
+        this.player.setPosition(startX, startY);
 
-        const g = this.add.graphics();
-
-        // Premium Player Character
-        // Shadow
-        g.fillStyle(0x000000, 0.2);
-        g.fillEllipse(0, 24, 20, 8); // Adjusted relative to center
-
-        // Front View (Down)
-        this.playerFront = this.add.graphics();
-        // Neck
-        this.playerFront.fillStyle(0xffcc80, 1);
-        this.playerFront.fillRect(-3, -14, 6, 4);
-        // Torso (Shirt)
-        this.playerFront.fillStyle(0x1565c0, 1);
-        this.playerFront.fillRoundedRect(-9, -12, 18, 20, 4);
-        // Arms (Sleeves)
-        this.playerFront.fillStyle(0x1565c0, 1);
-        this.playerFront.fillRoundedRect(-13, -10, 4, 12, 2);
-        this.playerFront.fillRoundedRect(9, -10, 4, 12, 2);
-        // Hands
-        this.playerFront.fillStyle(0xffcc80, 1);
-        this.playerFront.fillCircle(-11, 4, 3);
-        this.playerFront.fillCircle(11, 4, 3);
-        // Head
-        this.playerFront.fillStyle(0xffcc80, 1);
-        this.playerFront.fillCircle(0, -22, 11);
-        // Hair
-        this.playerFront.fillStyle(0x3e2723, 1);
-        this.playerFront.fillCircle(0, -24, 11); // Top
-        this.playerFront.fillCircle(0, -22, 11); // Base
-        this.playerFront.fillStyle(0xffcc80, 1); // Face cutout
-        this.playerFront.fillCircle(0, -20, 9);
-        // Eyes
-        this.playerFront.fillStyle(0x212121, 1);
-        this.playerFront.fillCircle(-3, -20, 2);
-        this.playerFront.fillCircle(3, -20, 2);
-        // Mouth
-        this.playerFront.lineStyle(1, 0x212121, 1);
-        this.playerFront.beginPath();
-        this.playerFront.arc(0, -16, 3, 0.2, Math.PI - 0.2, false);
-        this.playerFront.strokePath();
-
-        container.add(this.playerFront);
-
-        // Back View (Up)
-        this.playerBack = this.add.graphics();
-        // Torso
-        this.playerBack.fillStyle(0x1565c0, 1);
-        this.playerBack.fillRoundedRect(-9, -12, 18, 20, 4);
-        // Arms
-        this.playerBack.fillStyle(0x1565c0, 1);
-        this.playerBack.fillRoundedRect(-13, -10, 4, 12, 2);
-        this.playerBack.fillRoundedRect(9, -10, 4, 12, 2);
-        // Hands
-        this.playerBack.fillStyle(0xffcc80, 1);
-        this.playerBack.fillCircle(-11, 4, 3);
-        this.playerBack.fillCircle(11, 4, 3);
-        // Head (Full Hair)
-        this.playerBack.fillStyle(0x3e2723, 1);
-        this.playerBack.fillCircle(0, -22, 11);
-        this.playerBack.fillCircle(0, -24, 10);
-        this.playerBack.setVisible(false);
-        container.add(this.playerBack);
-
-        // Side View (Right)
-        this.playerSide = this.add.graphics();
-        // Torso
-        this.playerSide.fillStyle(0x1565c0, 1);
-        this.playerSide.fillRoundedRect(-5, -12, 10, 20, 4);
-        // Arm (One visible)
-        this.playerSide.fillStyle(0x1565c0, 1);
-        this.playerSide.fillRoundedRect(-1, -10, 4, 12, 2);
-        // Hand
-        this.playerSide.fillStyle(0xffcc80, 1);
-        this.playerSide.fillCircle(1, 4, 3);
-        // Head
-        this.playerSide.fillStyle(0xffcc80, 1);
-        this.playerSide.fillCircle(0, -22, 11);
-        // Hair
-        this.playerSide.fillStyle(0x3e2723, 1);
-        this.playerSide.fillCircle(-2, -22, 11); // Back
-        this.playerSide.fillCircle(0, -26, 9); // Top
-        // Eye
-        this.playerSide.fillStyle(0x212121, 1);
-        this.playerSide.fillCircle(5, -22, 2);
-        // Nose
-        this.playerSide.fillStyle(0xffcc80, 1);
-        this.playerSide.fillCircle(9, -20, 3);
-        // Mouth
-        this.playerSide.lineStyle(1, 0x212121, 1);
-        this.playerSide.beginPath();
-        this.playerSide.moveTo(6, -16);
-        this.playerSide.lineTo(9, -16);
-        this.playerSide.strokePath();
-
-        this.playerSide.setVisible(false);
-        container.add(this.playerSide);
-
-        // Name label
-        const nameBg = this.add.graphics();
-        nameBg.fillStyle(0x000000, 0.6);
-        nameBg.fillRoundedRect(-20, -55, 40, 20, 10);
-        container.add(nameBg);
-
-        const nameLabel = this.add.text(0, -45, 'You', {
-            fontSize: '12px',
-            color: '#ffffff',
-            padding: { x: 4, y: 2 },
-            fontFamily: 'Arial',
-            fontStyle: 'bold'
-        });
-        nameLabel.setOrigin(0.5, 0.5);
-        container.add(nameLabel);
-
-        this.player = container;
-        this.player.setDepth(100);
         this.physics.add.existing(this.player);
         (this.player.body as Phaser.Physics.Arcade.Body).setCollideWorldBounds(true);
         (this.player.body as Phaser.Physics.Arcade.Body).setSize(24, 24);
-        (this.player.body as Phaser.Physics.Arcade.Body).setOffset(-12, 0); // Offset physics to feet area
+        (this.player.body as Phaser.Physics.Arcade.Body).setOffset(-12, -12);
+
+        // Camera setup logic was here, ensure setupCamera is called after this
     }
 
     drawLegs(offset: number, isSideView: boolean = false) {
