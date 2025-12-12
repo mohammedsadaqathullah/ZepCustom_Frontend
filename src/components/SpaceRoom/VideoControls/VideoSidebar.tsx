@@ -106,7 +106,11 @@ export function VideoSidebar({
     // Log for debugging visibility
     NearbyPlayersLog(nearbyPlayers, remoteStreams);
 
-    const hasAnyVideo = isVideoOn || nearbyPlayers.some(p => remoteStreams.has(p.userId) && p.isVideoOn);
+    // Verify video existence by checking tracks, not just signaling state
+    const hasAnyVideo = isVideoOn || nearbyPlayers.some(p => {
+        const stream = remoteStreams.get(p.userId);
+        return stream && stream.getVideoTracks().length > 0;
+    });
 
     if (!hasAnyVideo) return null;
 
@@ -135,7 +139,12 @@ export function VideoSidebar({
 
             {/* Remote Videos */}
             {nearbyPlayers
-                .filter(p => remoteStreams.has(p.userId) && p.isVideoOn && fullscreenVideo !== p.userId)
+                .filter(p => {
+                    const stream = remoteStreams.get(p.userId);
+                    // Show if we have a stream with video tracks, regardless of p.isVideoOn state
+                    // This handles cases where signaling (p.isVideoOn) might be slightly delayed vs MediaStream
+                    return stream && stream.getVideoTracks().length > 0 && fullscreenVideo !== p.userId;
+                })
                 .map(player => (
                     <RemoteVideoPlayer
                         key={player.userId}
@@ -155,8 +164,11 @@ const NearbyPlayersLog = (nearbyPlayers: Player[], remoteStreams: Map<string, Me
         console.log('🔄 VideoSidebar Render:', {
             nearbyCount: nearbyPlayers.length,
             streamCount: remoteStreams.size,
-            playersWithVideo: nearbyPlayers.filter(p => p.isVideoOn).map(p => p.userName),
-            playersWithStreams: nearbyPlayers.filter(p => remoteStreams.has(p.userId)).map(p => p.userName)
+            playersWithVideoFlag: nearbyPlayers.filter(p => p.isVideoOn).map(p => p.userName),
+            playersWithActiveStream: nearbyPlayers.filter(p => {
+                const s = remoteStreams.get(p.userId);
+                return s && s.getVideoTracks().length > 0;
+            }).map(p => p.userName)
         });
     }, [nearbyPlayers, remoteStreams]);
 };
