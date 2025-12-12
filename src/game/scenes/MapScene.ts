@@ -1159,7 +1159,15 @@ export class MapScene extends Phaser.Scene {
     private lastUpdate: number = 0;
 
     checkProximity() {
-        if (!this.player || !this.socket) return;
+        if (!this.player) {
+            console.log('⚠️ checkProximity: No player yet');
+            return;
+        }
+        if (!this.socket) {
+            console.log('⚠️ checkProximity: No socket connection');
+            console.log('⚠️ Socket state:', this.socket);
+            return;
+        }
 
         const now = Date.now();
         if (now - this.lastUpdate < 50) return; // Throttle to 20 updates/sec
