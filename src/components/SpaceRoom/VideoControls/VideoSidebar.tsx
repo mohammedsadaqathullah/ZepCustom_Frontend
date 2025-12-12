@@ -15,17 +15,21 @@ interface VideoSidebarProps {
     onVideoClick: (userId: string | 'me') => void;
 }
 
-// Reusable Avatar component for remote players
-const RemoteVideoPlayer = ({
+import { genConfig } from 'react-nice-avatar'; // Added genConfig import
+
+// Reusable Avatar component for remote players - Memoized to prevent blinking
+const RemoteVideoPlayer = React.memo(({
     stream,
     userName,
     isAudioOn,
+    isVideoOn,
     avatarConfig,
     onClick
 }: {
     stream: MediaStream | undefined,
     userName: string,
     isAudioOn: boolean,
+    isVideoOn: boolean,
     avatarConfig?: any,
     onClick: () => void
 }) => {
@@ -36,9 +40,14 @@ const RemoteVideoPlayer = ({
             videoRef.current.srcObject = stream;
             videoRef.current.play().catch(e => console.error('Error playing remote video:', e));
         }
-    }, [stream]);
+    }, [stream, isVideoOn]);
 
-    const hasVideo = stream && stream.getVideoTracks().length > 0;
+    // Stable fallback avatar config to prevent "strobe" effect on re-renders
+    const effectiveAvatarConfig = React.useMemo(() => {
+        return avatarConfig || genConfig({ isGradient: true });
+    }, [avatarConfig]);
+
+    const hasVideo = isVideoOn && stream && stream.getVideoTracks().length > 0;
 
     return (
         <div style={{
@@ -98,14 +107,14 @@ const RemoteVideoPlayer = ({
                         style={{
                             width: '100%',
                             height: '100%',
-                            objectFit: 'contain'
+                            objectFit: 'cover' // Changed from contain to cover
                         }}
                     />
                 ) : (
                     <div style={{ width: '80px', height: '80px' }}>
                         {/* Fallback avatar if no video */}
                         <div style={{ width: '100%', height: '100%' }}>
-                            <Avatar style={{ width: '100%', height: '100%' }} {...avatarConfig} />
+                            <Avatar style={{ width: '100%', height: '100%' }} {...effectiveAvatarConfig} />
                         </div>
                     </div>
                 )}
@@ -131,7 +140,7 @@ const RemoteVideoPlayer = ({
             </div>
         </div>
     );
-};
+});
 
 export function VideoSidebar({
     isVideoOn,
@@ -141,7 +150,6 @@ export function VideoSidebar({
     showChat,
     onVideoClick
 }: VideoSidebarProps) {
-    // Show sidebar if there are any nearby players (even without video)
     if (nearbyPlayers.length === 0) return null;
 
     return (
@@ -160,6 +168,7 @@ export function VideoSidebar({
             overflowX: 'hidden',
             zIndex: 100,
             transition: 'right 0.3s ease',
+            paddingRight: '4px', // Space for scrollbar
             scrollbarWidth: 'thin',
             scrollbarColor: '#48bb78 rgba(0,0,0,0.3)'
         }}>
@@ -172,6 +181,7 @@ export function VideoSidebar({
                         stream={remoteStreams.get(player.userId)}
                         userName={player.userName}
                         isAudioOn={!!player.isAudioOn}
+                        isVideoOn={!!player.isVideoOn}
                         onClick={() => onVideoClick(player.userId)}
                         avatarConfig={player.avatarConfig}
                     />
