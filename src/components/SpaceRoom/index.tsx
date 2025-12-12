@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import AvatarCustomizer from '../AvatarCustomizer';
 import PhaserGame from '../PhaserGame';
 import { useSpaceRoom } from './hooks/useSpaceRoom';

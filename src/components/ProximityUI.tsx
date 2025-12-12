@@ -1,4 +1,4 @@
-import type { Player } from '../pages/SpaceRoom';
+import type { Player } from './SpaceRoom/types';
 
 interface Props {
     nearbyPlayers: Player[];

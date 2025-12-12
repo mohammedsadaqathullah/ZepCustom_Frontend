@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
-import { PLAYER_SPEED, ANIMATION_FRAME_RATE } from './config';
+import { ANIMATION_FRAME_RATE } from './config';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
     private userId: string;
     private userName: string;
     private nameLabel?: Phaser.GameObjects.Text;
-    private isLocal: boolean;
+    // private isLocal: boolean;
 
     constructor(
         scene: Phaser.Scene,
@@ -13,14 +13,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         y: number,
         userId: string,
         userName: string,
-        isLocal: boolean = false
+        // isLocal: boolean = false
     ) {
         // Create sprite with a colored circle for now (will use proper sprites later)
         super(scene, x, y, 'player');
 
         this.userId = userId;
         this.userName = userName;
-        this.isLocal = isLocal;
+        // this.isLocal = isLocal;
 
         // Add to scene
         scene.add.existing(this);

@@ -18,23 +18,22 @@ export function useSpaceRoom() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const animationFrameRef = useRef<number | undefined>(undefined);
-    const defaultAvatars = useRef<Map<string, AvatarConfig>>(new Map());
     const previousNearbyUsers = useRef<Set<string>>(new Set());
 
     // State
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
     const [space, setSpace] = useState<any>(null);
     const [players, setPlayers] = useState<Map<string, Player>>(new Map());
-    const [myPosition, setMyPosition] = useState({ x: 340, y: 500, direction: 'down', isWalking: false });
+    const [myPosition, _setMyPosition] = useState({ x: 340, y: 500, direction: 'down', isWalking: false });
     const [isVideoOn, setIsVideoOn] = useState(false);
     const [isAudioOn, setIsAudioOn] = useState(false);
-    const [isDancing, setIsDancing] = useState(false);
+    const [isDancing, _setIsDancing] = useState(false);
     const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
     const [myAvatarConfig, setMyAvatarConfig] = useState<AvatarConfig>(genConfig({ isGradient: true }));
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [joinNotification, setJoinNotification] = useState<string | null>(null);
-    const [waveNotification, setWaveNotification] = useState<string | null>(null);
+    const [waveNotification, _setWaveNotification] = useState<string | null>(null);
     const [showChat, setShowChat] = useState(true);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [socketReady, setSocketReady] = useState(false);
@@ -58,15 +57,7 @@ export function useSpaceRoom() {
         return distance <= PROXIMITY_RADIUS;
     });
 
-    // Helper to get or create default avatar for a player
-    const getPlayerAvatar = (player: Player): AvatarConfig => {
-        if (player.avatarConfig) return player.avatarConfig;
 
-        if (!defaultAvatars.current.has(player.id)) {
-            defaultAvatars.current.set(player.id, genConfig({ isGradient: true }));
-        }
-        return defaultAvatars.current.get(player.id)!;
-    };
 
     // Toggle functions
     const toggleVideo = () => {
@@ -499,7 +490,6 @@ export function useSpaceRoom() {
         handleAvatarSave,
         formatMessageTime,
         sendMessage,
-        getPlayerAvatar,
         navigate,
         spaceId,
         user,

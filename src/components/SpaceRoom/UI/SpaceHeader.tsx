@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import { MAP_CONFIG } from '../../../game/data/mapData';
 
 interface SpaceHeaderProps {

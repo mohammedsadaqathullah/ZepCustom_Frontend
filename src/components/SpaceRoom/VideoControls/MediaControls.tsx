@@ -1,5 +1,5 @@
-import React from 'react';
-import type { AvatarConfig } from 'react-nice-avatar';
+// import React from 'react';
+// import type { AvatarConfig } from 'react-nice-avatar';
 
 interface MediaControlsProps {
     isVideoOn: boolean;

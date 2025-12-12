@@ -3,9 +3,9 @@ import type { Player } from '../types';
 
 interface VideoSidebarProps {
     isVideoOn: boolean;
-    localStream: MediaStream | null;
-    isScreenSharing: boolean;
-    isAudioOn: boolean;
+    localStream: MediaStream | null; // Unused but kept for interface compatibility if needed, else comment out
+    isScreenSharing: boolean; // Unused
+    isAudioOn: boolean; // Unused
     fullscreenVideo: string | null;
     nearbyPlayers: Player[];
     remoteStreams: Map<string, MediaStream>;
@@ -15,9 +15,9 @@ interface VideoSidebarProps {
 
 export function VideoSidebar({
     isVideoOn,
-    localStream,
-    isScreenSharing,
-    isAudioOn,
+    // localStream,
+    // isScreenSharing,
+    // isAudioOn,
     fullscreenVideo,
     nearbyPlayers,
     remoteStreams,
