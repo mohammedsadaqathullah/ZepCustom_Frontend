@@ -7,6 +7,7 @@ export interface Player {
     direction: string;
     isWalking: boolean;
     avatarConfig?: any;
+    avatarUrl?: string; // Added
     isVideoOn?: boolean;
     isAudioOn?: boolean;
     isDancing?: boolean;

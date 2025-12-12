@@ -8,6 +8,7 @@ interface SelfVideoWidgetProps {
     isAudioOn: boolean;
     localStream: MediaStream | null;
     avatarConfig: AvatarConfig;
+    avatarUrl?: string; // Added prop
     userName?: string;
     showChat: boolean;
 }
@@ -17,6 +18,7 @@ export const SelfVideoWidget: React.FC<SelfVideoWidgetProps> = ({
     isAudioOn,
     localStream,
     avatarConfig,
+    avatarUrl, // Added
     userName = 'Me',
     showChat
 }) => {
@@ -25,7 +27,7 @@ export const SelfVideoWidget: React.FC<SelfVideoWidgetProps> = ({
             position: 'absolute',
             top: '20px',
             right: showChat ? '340px' : '20px', // Dynamic positioning
-            width: '240px',
+            width: '240px', // Fixed width
             transition: 'right 0.3s ease', // Smooth transition
             background: 'rgba(255, 255, 255, 0.95)',
             borderRadius: '16px',
@@ -94,7 +96,22 @@ export const SelfVideoWidget: React.FC<SelfVideoWidgetProps> = ({
                     />
                 ) : (
                     <div style={{ width: '80px', height: '80px' }}>
-                        <Avatar style={{ width: '100%', height: '100%' }} {...avatarConfig} />
+                        {avatarUrl ? (
+                            <img
+                                src={avatarUrl}
+                                alt="My Avatar"
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    borderRadius: '50%',
+                                    objectFit: 'cover',
+                                    border: '2px solid white',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                }}
+                            />
+                        ) : (
+                            <Avatar style={{ width: '100%', height: '100%' }} {...avatarConfig} />
+                        )}
                     </div>
                 )}
 

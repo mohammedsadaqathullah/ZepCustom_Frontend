@@ -24,6 +24,7 @@ const RemoteVideoPlayer = React.memo(({
     isAudioOn,
     isVideoOn,
     avatarConfig,
+    avatarUrl, // Added
     onClick
 }: {
     stream: MediaStream | undefined,
@@ -31,6 +32,7 @@ const RemoteVideoPlayer = React.memo(({
     isAudioOn: boolean,
     isVideoOn: boolean,
     avatarConfig?: any,
+    avatarUrl?: string, // Added
     onClick: () => void
 }) => {
     const videoRef = React.useRef<HTMLVideoElement>(null);
@@ -114,7 +116,22 @@ const RemoteVideoPlayer = React.memo(({
                     <div style={{ width: '80px', height: '80px' }}>
                         {/* Fallback avatar if no video */}
                         <div style={{ width: '100%', height: '100%' }}>
-                            <Avatar style={{ width: '100%', height: '100%' }} {...effectiveAvatarConfig} />
+                            {avatarUrl ? (
+                                <img
+                                    src={avatarUrl}
+                                    alt="Remote Avatar"
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        borderRadius: '50%',
+                                        objectFit: 'cover',
+                                        border: '2px solid white',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                    }}
+                                />
+                            ) : (
+                                <Avatar style={{ width: '100%', height: '100%' }} {...effectiveAvatarConfig} />
+                            )}
                         </div>
                     </div>
                 )}
@@ -184,6 +201,7 @@ export function VideoSidebar({
                         isVideoOn={!!player.isVideoOn}
                         onClick={() => onVideoClick(player.userId)}
                         avatarConfig={player.avatarConfig}
+                        avatarUrl={player.avatarUrl} // Added
                     />
                 ))}
         </div>

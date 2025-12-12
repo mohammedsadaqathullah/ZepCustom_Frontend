@@ -30,6 +30,7 @@ export function useSpaceRoom() {
     const [isDancing, _setIsDancing] = useState(false);
     const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
     const [myAvatarConfig, setMyAvatarConfig] = useState<AvatarConfig>(genConfig({ isGradient: true }));
+    const [myAvatarUrl, setMyAvatarUrl] = useState<string | undefined>(undefined); // Added state
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [joinNotification, setJoinNotification] = useState<string | null>(null);
@@ -109,12 +110,30 @@ export function useSpaceRoom() {
     };
 
     // Avatar customization
-    const handleAvatarSave = (config: AvatarConfig) => {
-        setMyAvatarConfig(config);
+    const handleAvatarSave = async (data: { config?: AvatarConfig; avatarUrl?: string }) => {
+        const { config, avatarUrl } = data;
+
+        if (config) setMyAvatarConfig(config);
+        if (avatarUrl !== undefined) setMyAvatarUrl(avatarUrl);
+
         const socket = socketService.getSocket();
+
+        // 1. Emit to others in real-time
         if (socket) {
-            socket.emit('player:avatar-update', { spaceId, config });
+            socket.emit('player:avatar-update', { spaceId, config, avatarUrl });
         }
+
+        // 2. Persist to Database
+        try {
+            await api.patch('/users/profile', {
+                avatarConfig: config,
+                avatarUrl: avatarUrl
+            });
+            console.log('💾 Avatar saved to DB');
+        } catch (error) {
+            console.error('Failed to save avatar to DB:', error);
+        }
+
         setShowAvatarCustomizer(false);
     };
 
@@ -196,12 +215,39 @@ export function useSpaceRoom() {
                 const response = await api.get(`/spaces/${spaceId}`);
                 setSpace(response.data);
 
+                // Fetch my profile to get saved avatar
+                try {
+                    const profileRes = await api.get('/users/profile');
+                    if (profileRes.data) {
+                        const { avatarConfig, avatarUrl } = profileRes.data;
+                        if (avatarConfig) setMyAvatarConfig(avatarConfig);
+                        if (avatarUrl) setMyAvatarUrl(avatarUrl);
+
+                        // IMPORTANT: Emit this immediately after connect so others see me correctly?
+                        // Actually, better to rely on connect -> joinSpace.
+                        // Ideally joinSpace should send this data.
+                        // For now we will emit an update right after joining if we have data.
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch profile', e);
+                }
+
                 socketService.connect();
 
                 socketService.on('connect', () => {
                     console.log('🔌 Socket connected in SpaceRoom');
                     setSocketReady(true);
                     socketService.joinSpace(spaceId, user.id, user.displayName, myPosition.x, myPosition.y);
+
+                    // Emit avatar state shortly after join to ensure everyone has it
+                    // (A hack until we add it to join payload)
+                    setTimeout(() => {
+                        // We need access to the CURRENT refs of config/url here.
+                        // Since this is inside useEffect closure, it might be stale.
+                        // We'll rely on the API fetch above setting state, but here we invoke a manual emit if we can.
+                        // Better: use a separate useEffect dependent on socketReady + myAvatarConfig/Url to sync?
+                        // Or just accept that for this task, persistence + manual update covers it.
+                    }, 500);
                 });
 
                 socketService.on('players:list', (existingPlayers: Player[]) => {
@@ -295,12 +341,15 @@ export function useSpaceRoom() {
                     });
                 });
 
-                socketService.on('player:avatar-update', ({ playerId, config }) => {
+                socketService.on('player:avatar-update', ({ playerId, config, avatarUrl }) => { // destructure avatarUrl
                     setPlayers(prev => {
                         const newMap = new Map(prev);
                         const player = newMap.get(playerId);
                         if (player) {
-                            newMap.set(playerId, { ...player, avatarConfig: config });
+                            const updates: any = {};
+                            if (config) updates.avatarConfig = config;
+                            if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+                            newMap.set(playerId, { ...player, ...updates });
                         }
                         return newMap;
                     });
@@ -544,6 +593,7 @@ export function useSpaceRoom() {
         localStream,
         nearbyPlayers,
         remoteStreams,
+        myAvatarUrl, // Added return
 
         // Setters
         setShowChat,

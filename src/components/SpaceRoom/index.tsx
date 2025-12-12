@@ -35,6 +35,7 @@ export default function SpaceRoom() {
         nearbyPlayers,
         remoteStreams,
         videoRef,
+        myAvatarUrl, // Added
 
         // Setters
         setShowChat,
@@ -132,6 +133,7 @@ export default function SpaceRoom() {
             {showAvatarCustomizer && (
                 <AvatarCustomizer
                     initialConfig={myAvatarConfig}
+                    initialAvatarUrl={myAvatarUrl} // Added prop
                     onSave={handleAvatarSave}
                     onClose={() => setShowAvatarCustomizer(false)}
                 />
@@ -189,6 +191,7 @@ export default function SpaceRoom() {
                 isAudioOn={isAudioOn}
                 localStream={localStream}
                 avatarConfig={myAvatarConfig}
+                avatarUrl={myAvatarUrl} // Added prop
                 userName={user?.displayName}
                 showChat={showChat}
             />
