@@ -9,7 +9,12 @@ interface MediaControlsProps {
     onToggleAudio: () => void;
     onToggleScreenShare: () => void;
     onCustomizeAvatar: () => void;
+    onExit: () => void;
 }
+
+import { FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaDesktop, FaTshirt, FaSignOutAlt } from 'react-icons/fa';
+
+// ... (props interface unchanged) ...
 
 export function MediaControls({
     isVideoOn,
@@ -18,19 +23,25 @@ export function MediaControls({
     onToggleVideo,
     onToggleAudio,
     onToggleScreenShare,
-    onCustomizeAvatar
+    onCustomizeAvatar,
+    onExit
 }: MediaControlsProps) {
-    const buttonStyle = (isActive: boolean, isSpecial?: boolean) => ({
-        padding: '12px 24px',
-        borderRadius: '8px',
+    const buttonStyle = (isActive: boolean, isRed: boolean = false) => ({
+        padding: '12px',
+        borderRadius: '50%', // Circle buttons
         border: 'none',
-        background: isSpecial
-            ? (isActive ? '#48bb78' : '#667eea')
-            : (isActive ? '#48bb78' : '#e53e3e'),
+        background: isActive
+            ? (isRed ? '#e53e3e' : '#48bb78') // Active state colors
+            : 'rgba(255, 255, 255, 0.1)', // Inactive glass style
         color: 'white',
-        fontWeight: 'bold' as const,
+        fontSize: '20px',
         cursor: 'pointer',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+        backdropFilter: 'blur(4px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'all 0.2s ease'
     });
 
     return (
@@ -40,29 +51,27 @@ export function MediaControls({
             left: '50%',
             transform: 'translateX(-50%)',
             display: 'flex',
-            gap: '12px',
-            zIndex: 1000
+            gap: '16px',
+            zIndex: 1000,
+            padding: '10px 20px',
+            background: 'rgba(0, 0, 0, 0.3)', // Subtle bar background
+            borderRadius: '24px',
+            backdropFilter: 'blur(8px)'
         }}>
-            <button onClick={onToggleVideo} style={buttonStyle(isVideoOn && !isScreenSharing)}>
-                {(isVideoOn && !isScreenSharing) ? '📹 Video On' : '📹 Video Off'}
+            <button onClick={onToggleVideo} style={buttonStyle(!isVideoOn, true)} title={isVideoOn ? "Turn Video Off" : "Turn Video On"}>
+                {isVideoOn ? <FaVideo /> : <FaVideoSlash />}
             </button>
-            <button onClick={onToggleAudio} style={buttonStyle(isAudioOn)}>
-                {isAudioOn ? '🎤 Mic On' : '🎤 Mic Off'}
+            <button onClick={onToggleAudio} style={buttonStyle(!isAudioOn, true)} title={isAudioOn ? "Mute Mic" : "Unmute Mic"}>
+                {isAudioOn ? <FaMicrophone /> : <FaMicrophoneSlash />}
             </button>
-            <button onClick={onToggleScreenShare} style={buttonStyle(isScreenSharing, true)}>
-                {isScreenSharing ? '🖥️ Sharing...' : '🖥️ Share Screen'}
+            <button onClick={onToggleScreenShare} style={buttonStyle(isScreenSharing)} title="Share Screen">
+                <FaDesktop />
             </button>
-            <button onClick={onCustomizeAvatar} style={{
-                padding: '12px 24px',
-                borderRadius: '8px',
-                border: 'none',
-                background: '#667eea',
-                color: 'white',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-            }}>
-                👕 Customize Avatar
+            <button onClick={onCustomizeAvatar} style={buttonStyle(false)} title="Customize Avatar">
+                <FaTshirt />
+            </button>
+            <button onClick={onExit} style={buttonStyle(true, true)} title="Exit Space" >
+                <FaSignOutAlt />
             </button>
         </div>
     );

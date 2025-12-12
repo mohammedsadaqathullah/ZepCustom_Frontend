@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Player } from '../types';
 import Avatar from 'react-nice-avatar';
+import { FaMicrophone, FaMicrophoneSlash } from 'react-icons/fa';
 
 interface VideoSidebarProps {
     isVideoOn: boolean;
@@ -51,8 +52,8 @@ const RemoteVideoPlayer = ({
             flexDirection: 'column',
             gap: '12px',
             border: '1px solid rgba(255, 255, 255, 0.2)',
-            cursor: 'pointer'
-        }} onClick={onClick}>
+            cursor: hasVideo ? 'pointer' : 'default'
+        }} onClick={hasVideo ? onClick : undefined}>
             {/* Header */}
             <div style={{
                 display: 'flex',
@@ -122,10 +123,10 @@ const RemoteVideoPlayer = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: 'white',
-                    fontSize: '16px',
+                    fontSize: '14px',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                 }}>
-                    {isAudioOn ? '🎤' : '🔇'}
+                    {isAudioOn ? <FaMicrophone /> : <FaMicrophoneSlash />}
                 </div>
             </div>
         </div>

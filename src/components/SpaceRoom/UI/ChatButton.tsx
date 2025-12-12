@@ -1,4 +1,4 @@
-// import React from 'react';
+import { FaComment } from 'react-icons/fa';
 
 interface ChatButtonProps {
     onClick: () => void;
@@ -21,10 +21,13 @@ export function ChatButton({ onClick }: ChatButtonProps) {
                 fontSize: '24px',
                 cursor: 'pointer',
                 boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                zIndex: 1000
+                zIndex: 1000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
             }}
         >
-            💬
+            <FaComment />
         </button>
     );
 }

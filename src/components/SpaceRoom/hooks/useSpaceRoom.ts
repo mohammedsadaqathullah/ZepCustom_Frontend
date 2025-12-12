@@ -213,7 +213,17 @@ export function useSpaceRoom() {
                 socketService.on('player:joined', (player: Player) => {
                     console.log('👋 Player joined:', player.userName, 'ID:', player.id, 'UserID:', player.userId);
                     setPlayers(prev => {
-                        const newMap = new Map(prev).set(player.id, player);
+                        const newMap = new Map(prev);
+
+                        // Prevent Ghost Players: Remove any existing player with the same userId
+                        for (const [existingId, existingPlayer] of newMap.entries()) {
+                            if (existingPlayer.userId === player.userId) {
+                                console.log(`👻 Removing ghost player instance: ${existingId} for user ${player.userId}`);
+                                newMap.delete(existingId);
+                            }
+                        }
+
+                        newMap.set(player.id, player);
                         console.log('📊 Total players now:', newMap.size);
                         return newMap;
                     });

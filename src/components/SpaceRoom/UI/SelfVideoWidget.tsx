@@ -1,6 +1,7 @@
 import React from 'react';
 import Avatar from 'react-nice-avatar';
 import type { AvatarConfig } from '../../../types/avatar';
+import { FaMicrophone, FaMicrophoneSlash } from 'react-icons/fa';
 
 interface SelfVideoWidgetProps {
     isVideoOn: boolean;
@@ -37,7 +38,7 @@ export const SelfVideoWidget: React.FC<SelfVideoWidgetProps> = ({
             backdropFilter: 'blur(8px)',
             border: '1px solid rgba(255, 255, 255, 0.2)'
         }}>
-            {/* Header / Status */}
+            {/* Header - Simplified to just status dot and name, explicitly removed Close/X icons */}
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -58,11 +59,7 @@ export const SelfVideoWidget: React.FC<SelfVideoWidgetProps> = ({
                         color: '#1a202c'
                     }}>{userName}</span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    {!isAudioOn && (
-                        <span style={{ fontSize: '14px' }}>❌</span>
-                    )}
-                </div>
+                {/* No other buttons here as requested */}
             </div>
 
             {/* Video / Avatar Container */}
@@ -96,7 +93,7 @@ export const SelfVideoWidget: React.FC<SelfVideoWidgetProps> = ({
                         }}
                     />
                 ) : (
-                    <div style={{ width: '120px', height: '120px' }}>
+                    <div style={{ width: '80px', height: '80px' }}>
                         <Avatar style={{ width: '100%', height: '100%' }} {...avatarConfig} />
                     </div>
                 )}
@@ -113,10 +110,10 @@ export const SelfVideoWidget: React.FC<SelfVideoWidgetProps> = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: 'white',
-                    fontSize: '16px',
+                    fontSize: '14px',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                 }}>
-                    {isAudioOn ? '🎤' : '🔇'}
+                    {isAudioOn ? <FaMicrophone /> : <FaMicrophoneSlash />}
                 </div>
             </div>
         </div>

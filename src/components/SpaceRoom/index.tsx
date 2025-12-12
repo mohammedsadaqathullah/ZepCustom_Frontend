@@ -66,7 +66,6 @@ export default function SpaceRoom() {
                 <SpaceHeader
                     spaceName={space?.name}
                     playerCount={players.size + 1}
-                    onExit={() => navigate('/dashboard')}
                 />
 
                 {/* Phaser Game Canvas */}
@@ -119,6 +118,7 @@ export default function SpaceRoom() {
                     onToggleAudio={toggleAudio}
                     onToggleScreenShare={toggleScreenShare}
                     onCustomizeAvatar={() => setShowAvatarCustomizer(true)}
+                    onExit={() => navigate('/dashboard')}
                 />
 
                 {/* Proximity Info */}

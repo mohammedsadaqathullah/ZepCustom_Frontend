@@ -1,13 +1,13 @@
-// import React from 'react';
+// import { FaSignOutAlt } from 'react-icons/fa';
 import { MAP_CONFIG } from '../../../game/data/mapData';
 
 interface SpaceHeaderProps {
     spaceName?: string;
     playerCount: number;
-    onExit: () => void;
+    // onExit prop removed
 }
 
-export function SpaceHeader({ spaceName, playerCount, onExit }: SpaceHeaderProps) {
+export function SpaceHeader({ spaceName, playerCount }: SpaceHeaderProps) {
     return (
         <div style={{
             position: 'absolute',
@@ -30,20 +30,7 @@ export function SpaceHeader({ spaceName, playerCount, onExit }: SpaceHeaderProps
                     👤 {playerCount} online • 🗺️ {MAP_CONFIG.rooms.length} rooms • Arrow Keys to move • E to enter/exit vehicle
                 </div>
             </div>
-            <button
-                onClick={onExit}
-                style={{
-                    padding: '8px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: '8px',
-                    color: 'white',
-                    cursor: 'pointer',
-                    backdropFilter: 'blur(4px)'
-                }}
-            >
-                ⬅ Exit
-            </button>
+            {/* Exit button moved to MediaControls */}
         </div>
     );
 }
