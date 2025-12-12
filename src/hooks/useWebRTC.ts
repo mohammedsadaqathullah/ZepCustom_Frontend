@@ -119,8 +119,15 @@ export function useWebRTC(myStream: MediaStream | null, spaceId: string | undefi
             // Add new tracks from the updated stream
             myStream.getTracks().forEach(track => {
                 try {
-                    pc.addTrack(track, myStream);
+                    const sender = pc.addTrack(track, myStream);
                     console.log(`🔄 Added new track:`, track.kind, track.id);
+
+                    // Force transceiver to sendrecv to ensure media is sent
+                    const transceiver = pc.getTransceivers().find(t => t.sender === sender);
+                    if (transceiver) {
+                        transceiver.direction = 'sendrecv';
+                        console.log(`🔄 Set transceiver direction to sendrecv for`, track.kind);
+                    }
                 } catch (err) {
                     console.warn('Could not add track:', err);
                 }

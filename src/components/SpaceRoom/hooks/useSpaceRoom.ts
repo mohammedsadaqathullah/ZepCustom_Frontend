@@ -68,7 +68,11 @@ export function useSpaceRoom() {
         // Stop/start video tracks to turn off camera LED
         if (localStream) {
             localStream.getVideoTracks().forEach(track => {
-                track.enabled = newState;
+                if (newState) {
+                    track.enabled = true;
+                } else {
+                    track.stop(); // CRITICAL: stop() track to turn off hardware light
+                }
             });
         }
 
@@ -434,6 +438,7 @@ export function useSpaceRoom() {
                         console.error('Error accessing microphone:', err);
                     }
                 } else {
+                    setLocalStream(null);
                     if (videoRef.current) {
                         videoRef.current.srcObject = null;
                     }
