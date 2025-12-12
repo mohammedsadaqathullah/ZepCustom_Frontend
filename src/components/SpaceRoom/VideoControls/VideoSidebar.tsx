@@ -17,8 +17,8 @@ interface VideoSidebarProps {
 
 import { genConfig } from 'react-nice-avatar'; // Added genConfig import
 
-// Reusable Avatar component for remote players - Memoized to prevent blinking
-const RemoteVideoPlayer = React.memo(({
+// Reusable Avatar component for remote players
+const RemoteVideoPlayer = ({
     stream,
     userName,
     isAudioOn,
@@ -157,7 +157,7 @@ const RemoteVideoPlayer = React.memo(({
             </div>
         </div>
     );
-});
+};
 
 export function VideoSidebar({
     isVideoOn,
