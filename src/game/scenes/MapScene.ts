@@ -86,11 +86,14 @@ export class MapScene extends Phaser.Scene {
     private updateOtherPlayer(playerId: string, data: any) {
         const container = this.otherPlayers.get(playerId);
         if (container) {
+            // Kill previous tweens to avoid conflict
+            this.tweens.killTweensOf(container);
+
             this.tweens.add({
                 targets: container,
                 x: data.x,
                 y: data.y,
-                duration: 100,
+                duration: 70, // Slightly more than update rate (50ms) for smoothing
                 ease: 'Linear'
             });
 
@@ -170,6 +173,9 @@ export class MapScene extends Phaser.Scene {
         super({ key: 'MapScene' });
     }
 
+    private spaceId: string | null = null;
+    private userName: string = 'You';
+
     init(data: {
         rooms: Room[];
         vehicles: Vehicle[];
@@ -182,6 +188,8 @@ export class MapScene extends Phaser.Scene {
         this.vehicles = data.vehicles || [];
         this.socket = data.socket;
         this.userId = data.userId || null;
+        this.userName = data.userName || 'You';
+        this.spaceId = data.spaceId || null;
 
         // Store user/space data for future use (e.g., multiplayer)
         console.log('MapScene initialized:', {
@@ -1014,7 +1022,7 @@ export class MapScene extends Phaser.Scene {
         const startY = 500;
 
         // Use shared helper
-        this.player = this.createAvatarContainer('You', true);
+        this.player = this.createAvatarContainer(this.userName, true);
         this.player.setPosition(startX, startY);
 
         this.physics.add.existing(this.player);
@@ -1122,8 +1130,13 @@ export class MapScene extends Phaser.Scene {
         instructions.setDepth(1000);
     }
 
+    private lastUpdate: number = 0;
+
     checkProximity() {
         if (!this.player || !this.socket) return;
+
+        const now = Date.now();
+        if (now - this.lastUpdate < 50) return; // Throttle to 20 updates/sec
 
         const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
         const playerCenter = playerBody.center;
@@ -1161,30 +1174,40 @@ export class MapScene extends Phaser.Scene {
             });
 
             if (closestRoomId) {
-                // Optional: You could treat "nearby" as being in the room, 
-                // or just use it for UI hints. For now, let's treat it as being "in" the room context
-                // but maybe with a different flag if needed. 
-                // The user asked for "proximity level", implying we should know they are NEAR.
-                // For this implementation, we'll set the currentRoomId to the nearby room
-                // so they can hear/see people in that room.
                 currentRoomId = closestRoomId;
             }
         }
 
         // Emit movement update
         if (currentRoomId !== this.lastRoomId ||
-            Math.abs(playerCenter.x - this.lastX) > 10 ||
-            Math.abs(playerCenter.y - this.lastY) > 10) {
+            Math.abs(playerCenter.x - this.lastX) > 2 ||
+            Math.abs(playerCenter.y - this.lastY) > 2) {
 
-            this.socket.emit('playerMove', {
-                x: playerCenter.x,
-                y: playerCenter.y,
-                roomId: currentRoomId
-            });
+            // Determine direction/walking (simplified)
+            const dx = playerCenter.x - this.lastX;
+            const dy = playerCenter.y - this.lastY;
+            let direction = 'down';
+            if (Math.abs(dx) > Math.abs(dy)) {
+                direction = dx > 0 ? 'right' : 'left';
+            } else {
+                direction = dy > 0 ? 'down' : 'up';
+            }
+            const isWalking = dx !== 0 || dy !== 0;
+
+            if (this.spaceId) {
+                this.socket.emit('player:move', {
+                    spaceId: this.spaceId,
+                    x: playerCenter.x,
+                    y: playerCenter.y,
+                    direction,
+                    isWalking
+                });
+            }
 
             this.lastRoomId = currentRoomId;
             this.lastX = playerCenter.x;
             this.lastY = playerCenter.y;
+            this.lastUpdate = now;
         }
     }
 
