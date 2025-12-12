@@ -39,10 +39,11 @@ const RemoteVideoPlayer = ({
 
     React.useEffect(() => {
         if (videoRef.current && stream) {
+            console.log(`🎥 Setting remote video stream: ${stream.id}, tracks: ${stream.getTracks().length}`);
             videoRef.current.srcObject = stream;
             videoRef.current.play().catch(e => console.error('Error playing remote video:', e));
         }
-    }, [stream, isVideoOn]);
+    }, [stream, isVideoOn, stream?.getVideoTracks().length, stream?.active]);
 
     // Stable fallback avatar config to prevent "strobe" effect on re-renders
     const effectiveAvatarConfig = React.useMemo(() => {
