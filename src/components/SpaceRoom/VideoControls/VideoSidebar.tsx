@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Player } from '../types';
+import Avatar from 'react-nice-avatar';
 
 interface VideoSidebarProps {
     isVideoOn: boolean;
@@ -13,145 +14,165 @@ interface VideoSidebarProps {
     onVideoClick: (userId: string | 'me') => void;
 }
 
-const RemoteVideoPlayer = ({ stream, userName, isAudioOn, onClick }: { stream: MediaStream, userName: string, isAudioOn: boolean, onClick: () => void }) => {
+// Reusable Avatar component for remote players
+const RemoteVideoPlayer = ({
+    stream,
+    userName,
+    isAudioOn,
+    avatarConfig,
+    onClick
+}: {
+    stream: MediaStream | undefined,
+    userName: string,
+    isAudioOn: boolean,
+    avatarConfig?: any,
+    onClick: () => void
+}) => {
     const videoRef = React.useRef<HTMLVideoElement>(null);
 
     React.useEffect(() => {
         if (videoRef.current && stream) {
-            console.log(`🎥 Rendering remote video for ${userName}:`, stream.id, stream.getTracks().map(t => t.kind));
             videoRef.current.srcObject = stream;
             videoRef.current.play().catch(e => console.error('Error playing remote video:', e));
         }
-    }, [stream, userName]);
+    }, [stream]);
+
+    const hasVideo = stream && stream.getVideoTracks().length > 0;
 
     return (
-        <div
-            style={{
-                position: 'relative',
-                width: '100%',
-                aspectRatio: '16/9',
-                background: 'black',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                border: '2px solid #48bb78',
-                boxShadow: '0 4px 12px rgba(72, 187, 120, 0.3)',
-                cursor: 'pointer'
-            }}
-            onClick={onClick}
-        >
-            <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain'
-                }}
-            />
-
+        <div style={{
+            position: 'relative',
+            width: '100%',
+            background: 'rgba(255, 255, 255, 0.95)',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+            padding: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            cursor: 'pointer'
+        }} onClick={onClick}>
+            {/* Header */}
             <div style={{
-                position: 'absolute',
-                top: '8px',
-                left: '8px',
-                right: '8px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: 'rgba(0,0,0,0.6)',
-                padding: '6px 10px',
-                borderRadius: '6px'
+                padding: '0 4px'
             }}>
-                <span style={{
-                    color: 'white',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                }}>
-                    {userName}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: '#48bb78',
+                        boxShadow: '0 0 0 2px rgba(72, 187, 120, 0.2)'
+                    }} />
+                    <span style={{
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        color: '#1a202c'
+                    }}>{userName}</span>
+                </div>
             </div>
 
-            {isAudioOn && (
+            {/* Video / Avatar Container */}
+            <div style={{
+                width: '100%',
+                aspectRatio: '16/9',
+                background: '#f7fafc',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid #e2e8f0'
+            }}>
+                {hasVideo ? (
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain'
+                        }}
+                    />
+                ) : (
+                    <div style={{ width: '80px', height: '80px' }}>
+                        {/* Fallback avatar if no video */}
+                        <div style={{ width: '100%', height: '100%' }}>
+                            <Avatar style={{ width: '100%', height: '100%' }} {...avatarConfig} />
+                        </div>
+                    </div>
+                )}
+
+                {/* Mic Status */}
                 <div style={{
                     position: 'absolute',
-                    bottom: '8px',
-                    right: '8px',
-                    background: '#48bb78',
+                    bottom: '12px',
+                    right: '12px',
+                    background: isAudioOn ? '#48bb78' : '#e53e3e',
+                    width: '32px',
+                    height: '32px',
                     borderRadius: '50%',
-                    width: '28px',
-                    height: '28px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '14px'
+                    color: 'white',
+                    fontSize: '16px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                 }}>
-                    🎤
+                    {isAudioOn ? '🎤' : '🔇'}
                 </div>
-            )}
+            </div>
         </div>
     );
 };
 
 export function VideoSidebar({
     isVideoOn,
-    // localStream,
-    // isScreenSharing,
-    // isAudioOn,
     fullscreenVideo,
     nearbyPlayers,
     remoteStreams,
     showChat,
     onVideoClick
 }: VideoSidebarProps) {
-    // Log for debugging visibility
-    NearbyPlayersLog(nearbyPlayers, remoteStreams);
-
-    // Verify video existence by checking tracks, not just signaling state
-    const hasAnyVideo = isVideoOn || nearbyPlayers.some(p => {
-        const stream = remoteStreams.get(p.userId);
-        return stream && stream.getVideoTracks().length > 0;
-    });
-
-    if (!hasAnyVideo) return null;
+    // Show sidebar if there are any nearby players (even without video)
+    if (nearbyPlayers.length === 0) return null;
 
     return (
         <div style={{
             position: 'absolute',
             top: '230px',
-            right: showChat ? '420px' : '20px',
+            right: showChat ? '340px' : '20px',
             width: '240px',
             maxHeight: 'calc(100vh - 250px)',
-            background: 'rgba(0,0,0,0.7)',
-            padding: '16px',
+            // Remove transparent background since items are now cards
+            padding: '0',
             display: 'flex',
             flexDirection: 'column',
             gap: '12px',
             overflowY: 'auto',
             overflowX: 'hidden',
             zIndex: 100,
-            backdropFilter: 'blur(10px)',
-            borderRadius: '12px',
             transition: 'right 0.3s ease',
             scrollbarWidth: 'thin',
             scrollbarColor: '#48bb78 rgba(0,0,0,0.3)'
-        } as React.CSSProperties}>
-            {/* Own Video is handled by SelfVideoWidget */}
-
+        }}>
             {/* Remote Videos */}
             {nearbyPlayers
-                .filter(p => {
-                    const stream = remoteStreams.get(p.userId);
-                    // Show if we have a stream with video tracks, regardless of p.isVideoOn state
-                    // This handles cases where signaling (p.isVideoOn) might be slightly delayed vs MediaStream
-                    return stream && stream.getVideoTracks().length > 0 && fullscreenVideo !== p.userId;
-                })
+                .filter(p => fullscreenVideo !== p.userId)
                 .map(player => (
                     <RemoteVideoPlayer
                         key={player.userId}
-                        stream={remoteStreams.get(player.userId)!}
+                        stream={remoteStreams.get(player.userId)}
                         userName={player.userName}
                         isAudioOn={!!player.isAudioOn}
                         onClick={() => onVideoClick(player.userId)}
+                        avatarConfig={player.avatarConfig}
                     />
                 ))}
         </div>

@@ -101,31 +101,22 @@ export const SelfVideoWidget: React.FC<SelfVideoWidgetProps> = ({
                     </div>
                 )}
 
-                {/* Status Badge Overlay */}
                 <div style={{
                     position: 'absolute',
                     bottom: '12px',
-                    left: '12px',
-                    background: 'rgba(0, 0, 0, 0.6)',
-                    padding: '4px 8px',
-                    borderRadius: '6px',
+                    right: '12px',
+                    background: isAudioOn ? '#48bb78' : '#e53e3e',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: '16px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                 }}>
-                    <span style={{
-                        width: '6px',
-                        height: '6px',
-                        borderRadius: '50%',
-                        background: isVideoOn ? '#48bb78' : '#e53e3e'
-                    }} />
-                    <span style={{
-                        color: 'white',
-                        fontSize: '11px',
-                        fontWeight: '600'
-                    }}>
-                        {isVideoOn ? 'ON AIR' : 'OFF AIR'}
-                    </span>
+                    {isAudioOn ? '🎤' : '🔇'}
                 </div>
             </div>
         </div>
