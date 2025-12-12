@@ -1,0 +1,133 @@
+import React from 'react';
+import Avatar from 'react-nice-avatar';
+import type { AvatarConfig } from '../../../types/avatar';
+
+interface SelfVideoWidgetProps {
+    isVideoOn: boolean;
+    isAudioOn: boolean;
+    localStream: MediaStream | null;
+    avatarConfig: AvatarConfig;
+    userName?: string;
+    showChat: boolean;
+}
+
+export const SelfVideoWidget: React.FC<SelfVideoWidgetProps> = ({
+    isVideoOn,
+    isAudioOn,
+    localStream,
+    avatarConfig,
+    userName = 'Me',
+    showChat
+}) => {
+    return (
+        <div style={{
+            position: 'absolute',
+            top: '20px',
+            right: showChat ? '340px' : '20px', // Dynamic positioning
+            width: '280px',
+            transition: 'right 0.3s ease', // Smooth transition
+            background: 'rgba(255, 255, 255, 0.95)',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+            padding: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            zIndex: 100,
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)'
+        }}>
+            {/* Header / Status */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '0 4px'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: '#48bb78',
+                        boxShadow: '0 0 0 2px rgba(72, 187, 120, 0.2)'
+                    }} />
+                    <span style={{
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        color: '#1a202c'
+                    }}>{userName}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    {!isAudioOn && (
+                        <span style={{ fontSize: '14px' }}>❌</span>
+                    )}
+                </div>
+            </div>
+
+            {/* Video / Avatar Container */}
+            <div style={{
+                width: '100%',
+                aspectRatio: '16/9',
+                background: '#f7fafc',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid #e2e8f0'
+            }}>
+                {isVideoOn && localStream ? (
+                    <video
+                        autoPlay
+                        muted
+                        playsInline
+                        ref={(videoElement) => {
+                            if (videoElement && localStream) {
+                                videoElement.srcObject = localStream;
+                            }
+                        }}
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            transform: 'scaleX(-1)'
+                        }}
+                    />
+                ) : (
+                    <div style={{ width: '120px', height: '120px' }}>
+                        <Avatar style={{ width: '100%', height: '100%' }} {...avatarConfig} />
+                    </div>
+                )}
+
+                {/* Status Badge Overlay */}
+                <div style={{
+                    position: 'absolute',
+                    bottom: '12px',
+                    left: '12px',
+                    background: 'rgba(0, 0, 0, 0.6)',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                }}>
+                    <span style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        background: isVideoOn ? '#48bb78' : '#e53e3e'
+                    }} />
+                    <span style={{
+                        color: 'white',
+                        fontSize: '11px',
+                        fontWeight: '600'
+                    }}>
+                        {isVideoOn ? 'ON AIR' : 'OFF AIR'}
+                    </span>
+                </div>
+            </div>
+        </div>
+    );
+};
