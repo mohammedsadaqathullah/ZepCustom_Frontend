@@ -53,8 +53,8 @@ export class MapScene extends Phaser.Scene {
 
     public updatePlayers(players: Map<string, any>) {
         players.forEach((playerData, playerId) => {
-            // Skip local player
-            if (playerId === this.userId) return;
+            // Skip local player (check userId inside the data, not the map key which is socketId)
+            if (playerData.userId === this.userId) return;
 
             if (this.otherPlayers.has(playerId)) {
                 this.updateOtherPlayer(playerId, playerData);
