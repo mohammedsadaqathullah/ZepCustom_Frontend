@@ -305,7 +305,7 @@ export function useSpaceRoom() {
                     });
                 });
 
-                socketService.on('player:moved', ({ playerId, userId, userName, x, y, direction, isWalking }) => {
+                socketService.on('player:moved', ({ playerId, userId, userName, x, y, direction, isWalking, roomId }) => {
                     // Skip if this is our own movement
                     if (userId === user.id) return;
 
@@ -313,7 +313,7 @@ export function useSpaceRoom() {
                         const newMap = new Map(prev);
                         const player = newMap.get(playerId);
                         if (player) {
-                            newMap.set(playerId, { ...player, x, y, direction, isWalking });
+                            newMap.set(playerId, { ...player, x, y, direction, isWalking, roomId });
                         } else {
                             console.log('⚠️ Received movement for unknown player:', playerId, userName);
                         }
