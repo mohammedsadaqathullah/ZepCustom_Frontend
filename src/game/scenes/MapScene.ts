@@ -1221,6 +1221,13 @@ export class MapScene extends Phaser.Scene {
             const isWalking = dx !== 0 || dy !== 0;
 
             if (this.spaceId) {
+                console.log('📤 Emitting player:move to backend:', {
+                    spaceId: this.spaceId,
+                    x: Math.round(playerCenter.x),
+                    y: Math.round(playerCenter.y),
+                    direction,
+                    isWalking
+                });
                 this.socket.emit('player:move', {
                     spaceId: this.spaceId,
                     x: playerCenter.x,
