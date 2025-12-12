@@ -85,12 +85,19 @@ const PhaserGame: React.FC<PhaserGameProps> = ({ socket, userId, userName, space
     // Update scene when props change
     useEffect(() => {
         if (sceneRef.current && socket && userId && userName && spaceId) {
-            // We don't want to restart the scene every time socket/user changes if it's just a reconnect
-            // But for now keeping original logic to ensure init data is fresh
-            // Careful: updatePlayers should be separate so we don't reset the scene on every movement
+            console.log('🔧 PhaserGame: Updating scene with socket:', !!socket, 'socketId:', socket?.id);
 
-            // Check if scene is running, if not restart
-            if (!sceneRef.current.scene.isActive()) {
+            // Update the scene's socket reference without restarting the whole scene
+            if (sceneRef.current.scene.isActive()) {
+                // Directly update the socket on the scene
+                (sceneRef.current as any).socket = socket;
+                (sceneRef.current as any).spaceId = spaceId;
+                (sceneRef.current as any).userId = userId;
+                (sceneRef.current as any).userName = userName;
+
+                console.log('✅ MapScene socket updated:', socket.id);
+            } else {
+                // Scene isn't active, restart it
                 sceneRef.current.scene.restart({
                     rooms: MAP_CONFIG.rooms,
                     vehicles: MAP_CONFIG.vehicles,
