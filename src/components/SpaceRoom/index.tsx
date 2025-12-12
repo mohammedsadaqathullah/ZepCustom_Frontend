@@ -75,7 +75,7 @@ export default function SpaceRoom() {
                     top: '80px',
                     left: 0,
                     right: 0,
-                    bottom: '100px',
+                    bottom: 0,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
@@ -99,7 +99,7 @@ export default function SpaceRoom() {
                         top: '80px',
                         left: '50%',
                         transform: 'translateX(-50%)',
-                        background: 'transparent',
+                        background: '#667eea',
                         color: 'white',
                         padding: '12px 24px',
                         borderRadius: '8px',
