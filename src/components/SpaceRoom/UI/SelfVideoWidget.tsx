@@ -22,6 +22,14 @@ export const SelfVideoWidget: React.FC<SelfVideoWidgetProps> = ({
     userName = 'Me',
     showChat
 }) => {
+    const videoRef = React.useRef<HTMLVideoElement>(null);
+
+    React.useEffect(() => {
+        if (videoRef.current && localStream) {
+            videoRef.current.srcObject = localStream;
+        }
+    }, [localStream]);
+
     return (
         <div style={{
             position: 'absolute',
@@ -82,11 +90,7 @@ export const SelfVideoWidget: React.FC<SelfVideoWidgetProps> = ({
                         autoPlay
                         muted
                         playsInline
-                        ref={(videoElement) => {
-                            if (videoElement && localStream) {
-                                videoElement.srcObject = localStream;
-                            }
-                        }}
+                        ref={videoRef}
                         style={{
                             width: '100%',
                             height: '100%',
