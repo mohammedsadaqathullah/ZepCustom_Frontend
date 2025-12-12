@@ -62,7 +62,7 @@ export default function SpaceRoom() {
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
             {/* Main Game Area */}
-            <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: 'transparent' }}>
+            <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#2d3748' }}>
                 {/* Header */}
                 <SpaceHeader
                     spaceName={space?.name}
@@ -99,7 +99,7 @@ export default function SpaceRoom() {
                         top: '80px',
                         left: '50%',
                         transform: 'translateX(-50%)',
-                        background: '#667eea',
+                        background: 'transparent',
                         color: 'white',
                         padding: '12px 24px',
                         borderRadius: '8px',
