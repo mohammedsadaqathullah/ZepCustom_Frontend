@@ -64,7 +64,16 @@ export function useSpaceRoom() {
         const newState = !isVideoOn;
         setIsVideoOn(newState);
         if (isScreenSharing) setIsScreenSharing(false);
+
+        // Stop/start video tracks to turn off camera LED
+        if (localStream) {
+            localStream.getVideoTracks().forEach(track => {
+                track.enabled = newState;
+            });
+        }
+
         socketService.emitVideoToggle(newState);
+        console.log('📹 Video toggled:', newState);
     };
 
     const toggleAudio = () => {

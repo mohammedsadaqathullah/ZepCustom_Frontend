@@ -87,6 +87,8 @@ export default function SpaceRoom() {
                         spaceId={spaceId}
                         players={players}
                         onPositionUpdate={setMyPosition}
+                        isVideoOn={isVideoOn}
+                        isAudioOn={isAudioOn}
                     />
                 </div>
 
