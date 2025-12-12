@@ -487,17 +487,24 @@ export function useSpaceRoom() {
 
         // 3. RETRY connection for nearby users if we don't have a peer (Healing)
         currentNearbyUserIds.forEach(userId => {
-            if (!hasPeer(userId)) {
-                // Same glare prevention logic for retries
-                if (user && user.id < userId) {
-                    console.log('⚠️ Missing peer connection for nearby user, retrying:', userId);
+            const hasConnection = hasPeer(userId);
+            const myId = user?.id;
+
+            // Log for debugging loop execution
+            if (!hasConnection) {
+                console.log(`🚑 Healing check for ${userId}: MyID=${myId}, ConnectionExists=${hasConnection}`);
+
+                if (myId && myId < userId) {
+                    console.log('✅ Healing: Initiating retry offer due to lower ID');
                     createOffer(userId);
+                } else {
+                    console.log('⏳ Healing: Waiting for other user (higher ID) to offer');
                 }
             }
         });
 
         previousNearbyUsers.current = currentNearbyUserIds;
-    }, [nearbyPlayers, createOffer, closePeerConnection, hasPeer, localStream]);
+    }, [nearbyPlayers, createOffer, closePeerConnection, hasPeer, localStream, user]);
 
     return {
         // Refs
