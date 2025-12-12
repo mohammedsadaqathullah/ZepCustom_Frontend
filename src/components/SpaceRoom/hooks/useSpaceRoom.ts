@@ -468,8 +468,15 @@ export function useSpaceRoom() {
 
         // 1. Connect to NEW nearby users
         newUsers.forEach(userId => {
-            console.log('Creating offer for NEW nearby user:', userId);
-            createOffer(userId);
+            // PREVENTION OF GLARE (Collision):
+            // Only the user with the lexicographically "lower" ID initiates the connection.
+            // The other user waits to receive the offer.
+            if (user && user.id < userId) {
+                console.log(`🔷 I am the caller for ${userId} (myId < theirId)`);
+                createOffer(userId);
+            } else {
+                console.log(`🔶 Waiting for offer from ${userId} (myId > theirId)`);
+            }
         });
 
         // 2. Disconnect from users who moved away
@@ -481,8 +488,11 @@ export function useSpaceRoom() {
         // 3. RETRY connection for nearby users if we don't have a peer (Healing)
         currentNearbyUserIds.forEach(userId => {
             if (!hasPeer(userId)) {
-                console.log('⚠️ Missing peer connection for nearby user, retrying:', userId);
-                createOffer(userId);
+                // Same glare prevention logic for retries
+                if (user && user.id < userId) {
+                    console.log('⚠️ Missing peer connection for nearby user, retrying:', userId);
+                    createOffer(userId);
+                }
             }
         });
 
