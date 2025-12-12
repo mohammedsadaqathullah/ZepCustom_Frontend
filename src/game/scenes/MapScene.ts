@@ -137,6 +137,12 @@ export class MapScene extends Phaser.Scene {
         if (audioIcon) audioIcon.setVisible(!!isAudioOn);
     }
 
+    public updateLocalPlayerMedia(isVideoOn: boolean, isAudioOn: boolean) {
+        if (this.player) {
+            this.updateAvatarMediaState(this.player, isVideoOn, isAudioOn);
+        }
+    }
+
     private removeOtherPlayer(playerId: string) {
         const container = this.otherPlayers.get(playerId);
         if (container) {
@@ -1278,6 +1284,14 @@ export class MapScene extends Phaser.Scene {
             this.lastX = playerCenter.x;
             this.lastY = playerCenter.y;
             this.lastUpdate = now;
+
+            // Emit position update for proximity calculations
+            this.game.events.emit('player-position-update', {
+                x: playerCenter.x,
+                y: playerCenter.y,
+                direction,
+                isWalking
+            });
         }
     }
 

@@ -24,7 +24,7 @@ export function useSpaceRoom() {
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
     const [space, setSpace] = useState<any>(null);
     const [players, setPlayers] = useState<Map<string, Player>>(new Map());
-    const [myPosition, _setMyPosition] = useState({ x: 340, y: 500, direction: 'down', isWalking: false });
+    const [myPosition, setMyPosition] = useState({ x: 340, y: 500, direction: 'down', isWalking: false });
     const [isVideoOn, setIsVideoOn] = useState(false);
     const [isAudioOn, setIsAudioOn] = useState(false);
     const [isDancing, _setIsDancing] = useState(false);
@@ -507,6 +507,7 @@ export function useSpaceRoom() {
         navigate,
         spaceId,
         user,
-        socket: socketService.getSocket()
+        socket: socketService.getSocket(),
+        setMyPosition
     };
 }

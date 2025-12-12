@@ -43,6 +43,7 @@ export default function SpaceRoom() {
         setSelectedPrivateUser,
         setNewMessage,
         setShowAvatarCustomizer,
+        setMyPosition,
 
         // Functions
         toggleVideo,
@@ -85,6 +86,7 @@ export default function SpaceRoom() {
                         userName={user?.displayName}
                         spaceId={spaceId}
                         players={players}
+                        onPositionUpdate={setMyPosition}
                     />
                 </div>
 

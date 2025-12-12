@@ -10,9 +10,12 @@ interface PhaserGameProps {
     userName?: string;
     spaceId?: string;
     players?: Map<string, any>;
+    onPositionUpdate?: (position: { x: number, y: number, direction: string, isWalking: boolean }) => void;
+    isVideoOn?: boolean;
+    isAudioOn?: boolean;
 }
 
-const PhaserGame: React.FC<PhaserGameProps> = ({ socket, userId, userName, spaceId, players }) => {
+const PhaserGame: React.FC<PhaserGameProps> = ({ socket, userId, userName, spaceId, players, onPositionUpdate, isVideoOn, isAudioOn }) => {
     const gameRef = useRef<Phaser.Game | null>(null);
     const sceneRef = useRef<MapScene | null>(null);
 
@@ -63,6 +66,11 @@ const PhaserGame: React.FC<PhaserGameProps> = ({ socket, userId, userName, space
                     console.error('MapScene not found!');
                 }
             });
+
+            // Listen to position updates from Phaser
+            if (onPositionUpdate) {
+                gameRef.current.events.on('player-position-update', onPositionUpdate);
+            }
         }
 
         // Cleanup on unmount
@@ -81,6 +89,13 @@ const PhaserGame: React.FC<PhaserGameProps> = ({ socket, userId, userName, space
             sceneRef.current.updatePlayers(players);
         }
     }, [players]);
+
+    // Update local player's media icons when video/audio state changes
+    useEffect(() => {
+        if (sceneRef.current) {
+            sceneRef.current.updateLocalPlayerMedia(!!isVideoOn, !!isAudioOn);
+        }
+    }, [isVideoOn, isAudioOn]);
 
     // Update scene when props change
     useEffect(() => {
