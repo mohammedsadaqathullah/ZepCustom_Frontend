@@ -52,23 +52,49 @@ export class MapScene extends Phaser.Scene {
     private userId: string | null = null; // Store userId
 
     public updatePlayers(players: Map<string, any>) {
+        console.log('🎮 MapScene.updatePlayers called');
+        console.log('🎮 Total players in map:', players.size);
+        console.log('🎮 My userId:', this.userId);
+        console.log('🎮 Players data:', Array.from(players.entries()).map(([id, p]) => ({
+            playerId: id,
+            userId: p.userId,
+            userName: p.userName,
+            position: { x: p.x, y: p.y }
+        })));
+        console.log('🎮 Currently rendered other players:', this.otherPlayers.size);
+
+        let addedCount = 0;
+        let updatedCount = 0;
+        let skippedCount = 0;
+
         players.forEach((playerData, playerId) => {
             // Skip local player (check userId inside the data, not the map key which is socketId)
-            if (playerData.userId === this.userId) return;
+            if (playerData.userId === this.userId) {
+                console.log('⏭️  Skipping local player:', playerData.userName);
+                skippedCount++;
+                return;
+            }
 
             if (this.otherPlayers.has(playerId)) {
+                console.log('🔄 Updating existing player:', playerData.userName, 'at', playerData.x, playerData.y);
                 this.updateOtherPlayer(playerId, playerData);
+                updatedCount++;
             } else {
+                console.log('➕ Adding new player:', playerData.userName, 'at', playerData.x, playerData.y);
                 this.addOtherPlayer(playerId, playerData);
+                addedCount++;
             }
         });
 
         // Remove players who left
         this.otherPlayers.forEach((_, playerId) => {
             if (!players.has(playerId)) {
+                console.log('➖ Removing player who left:', playerId);
                 this.removeOtherPlayer(playerId);
             }
         });
+
+        console.log(`📊 UpdatePlayers summary: Added=${addedCount}, Updated=${updatedCount}, Skipped=${skippedCount}, Total rendered=${this.otherPlayers.size}`);
     }
 
     private addOtherPlayer(playerId: string, data: any) {
