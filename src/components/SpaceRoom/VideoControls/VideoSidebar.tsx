@@ -117,10 +117,10 @@ export function VideoSidebar({
     return (
         <div style={{
             position: 'absolute',
-            top: '80px',
+            top: '230px',
             right: showChat ? '420px' : '20px',
-            width: '320px',
-            maxHeight: 'calc(100vh - 100px)',
+            width: '240px',
+            maxHeight: 'calc(100vh - 250px)',
             background: 'rgba(0,0,0,0.7)',
             padding: '16px',
             display: 'flex',

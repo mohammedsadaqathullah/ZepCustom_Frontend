@@ -24,7 +24,7 @@ export const SelfVideoWidget: React.FC<SelfVideoWidgetProps> = ({
             position: 'absolute',
             top: '20px',
             right: showChat ? '340px' : '20px', // Dynamic positioning
-            width: '280px',
+            width: '240px',
             transition: 'right 0.3s ease', // Smooth transition
             background: 'rgba(255, 255, 255, 0.95)',
             borderRadius: '16px',
