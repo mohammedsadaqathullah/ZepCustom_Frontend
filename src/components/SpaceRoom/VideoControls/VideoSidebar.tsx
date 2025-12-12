@@ -35,22 +35,45 @@ const RemoteVideoPlayer = ({
     avatarUrl?: string, // Added
     onClick: () => void
 }) => {
+    const [videoTrackCount, setVideoTrackCount] = React.useState(stream ? stream.getVideoTracks().length : 0);
     const videoRef = React.useRef<HTMLVideoElement>(null);
 
+    // Monitor stream track changes
+    React.useEffect(() => {
+        if (!stream) {
+            setVideoTrackCount(0);
+            return;
+        }
+
+        setVideoTrackCount(stream.getVideoTracks().length);
+
+        const handleTrackChange = () => {
+            setVideoTrackCount(stream.getVideoTracks().length);
+        };
+
+        stream.addEventListener('addtrack', handleTrackChange);
+        stream.addEventListener('removetrack', handleTrackChange);
+
+        return () => {
+            stream.removeEventListener('addtrack', handleTrackChange);
+            stream.removeEventListener('removetrack', handleTrackChange);
+        };
+    }, [stream]);
+
+    // Handle video element source
     React.useEffect(() => {
         if (videoRef.current && stream) {
-            console.log(`🎥 Setting remote video stream: ${stream.id}, tracks: ${stream.getTracks().length}`);
             videoRef.current.srcObject = stream;
             videoRef.current.play().catch(e => console.error('Error playing remote video:', e));
         }
-    }, [stream, isVideoOn, stream?.getVideoTracks().length, stream?.active]);
+    }, [stream, videoTrackCount]); // Re-run if stream changes or tracks change
 
-    // Stable fallback avatar config to prevent "strobe" effect on re-renders
+    // Stable fallback avatar config
     const effectiveAvatarConfig = React.useMemo(() => {
         return avatarConfig || genConfig({ isGradient: true });
     }, [avatarConfig]);
 
-    const hasVideo = isVideoOn && stream && stream.getVideoTracks().length > 0;
+    const hasVideo = videoTrackCount > 0;
 
     return (
         <div style={{
