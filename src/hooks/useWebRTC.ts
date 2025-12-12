@@ -30,7 +30,10 @@ export function useWebRTC(myStream: MediaStream | null, spaceId: string | undefi
                 pc.addTrack(track, myStream);
             });
         } else {
-            console.warn('⚠️ No local stream available when creating peer connection');
+            console.log('🔧 No local stream, adding recvonly transceivers');
+            // Add recvonly transceivers so we can receive video/audio even if we don't send any
+            pc.addTransceiver('audio', { direction: 'recvonly' });
+            pc.addTransceiver('video', { direction: 'recvonly' });
         }
 
         // Handle incoming stream

@@ -423,7 +423,7 @@ export function useSpaceRoom() {
 
     // Manage WebRTC connections based on proximity
     useEffect(() => {
-        if (!localStream) return;
+        // We now allow connections even if no local stream (receive-only)
 
         const currentNearbyUserIds = new Set(nearbyPlayers.map(p => p.userId));
         const previousUserIds = previousNearbyUsers.current;
@@ -431,12 +431,12 @@ export function useSpaceRoom() {
         const newUsers = [...currentNearbyUserIds].filter(id => !previousUserIds.has(id));
         const leftUsers = [...previousUserIds].filter(id => !currentNearbyUserIds.has(id));
 
-        if (isVideoOn || isAudioOn) {
-            newUsers.forEach(userId => {
-                console.log('Creating offer for nearby user:', userId, '(video:', isVideoOn, 'audio:', isAudioOn, ')');
-                createOffer(userId);
-            });
-        }
+        // Always create/connect to nearby users, regardless of our own video state
+        // This allows us to see/hear them even if we are not broadcasting
+        newUsers.forEach(userId => {
+            console.log('Creating offer for nearby user:', userId);
+            createOffer(userId);
+        });
 
         leftUsers.forEach(userId => {
             console.log('Closing connection for user who moved away:', userId);
@@ -444,7 +444,7 @@ export function useSpaceRoom() {
         });
 
         previousNearbyUsers.current = currentNearbyUserIds;
-    }, [nearbyPlayers, localStream, createOffer, closePeerConnection, isVideoOn, isAudioOn]);
+    }, [nearbyPlayers, createOffer, closePeerConnection]);
 
     return {
         // Refs

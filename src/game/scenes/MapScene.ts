@@ -49,12 +49,12 @@ export class MapScene extends Phaser.Scene {
     private vehicleMap: Map<string, Phaser.GameObjects.Container> = new Map();
     private otherPlayers: Map<string, Phaser.GameObjects.Container> = new Map();
 
+    private userId: string | null = null; // Store userId
+
     public updatePlayers(players: Map<string, any>) {
-        // 1. Update or create players
         players.forEach((playerData, playerId) => {
-            if (playerId === this.socket?.id) return; // Skip local player (handled by local movement) - wait, socket.id might vary. safer to check userId if available or just rely on ID mismatch if we passed local ID.
-            // Actually, we should skip our OWN user based on userId if possible, or expect the parent to filter. 
-            // Better: Check against this.socket.id if available, or a passed userId.
+            // Skip local player
+            if (playerId === this.userId) return;
 
             if (this.otherPlayers.has(playerId)) {
                 this.updateOtherPlayer(playerId, playerData);
@@ -63,7 +63,7 @@ export class MapScene extends Phaser.Scene {
             }
         });
 
-        // 2. Remove players who left
+        // Remove players who left
         this.otherPlayers.forEach((_, playerId) => {
             if (!players.has(playerId)) {
                 this.removeOtherPlayer(playerId);
@@ -75,6 +75,10 @@ export class MapScene extends Phaser.Scene {
         console.log('Adding other player:', playerId, data);
         const container = this.createAvatarContainer(data.userName || 'User', false);
         container.setPosition(data.x, data.y);
+
+        // Initial media state
+        this.updateAvatarMediaState(container, data.isVideoOn, data.isAudioOn);
+
         this.add.existing(container);
         this.otherPlayers.set(playerId, container);
     }
@@ -82,23 +86,29 @@ export class MapScene extends Phaser.Scene {
     private updateOtherPlayer(playerId: string, data: any) {
         const container = this.otherPlayers.get(playerId);
         if (container) {
-            // Smooth interpolation could go here, for now just teleport
-            // container.setPosition(data.x, data.y); 
-            // actually, let's tween it for smoothness
             this.tweens.add({
                 targets: container,
                 x: data.x,
                 y: data.y,
-                duration: 100, // Update rate matches
+                duration: 100,
                 ease: 'Linear'
             });
 
-            // Update visuals based on direction/isWalking if needed (skipped for brevity, adding basic)
+            // Update media status visuals
+            this.updateAvatarMediaState(container, data.isVideoOn, data.isAudioOn);
         }
     }
 
+    private updateAvatarMediaState(container: Phaser.GameObjects.Container, isVideoOn: boolean, isAudioOn: boolean) {
+        // Find existing indicators
+        const videoIcon = container.getByName('videoIcon') as Phaser.GameObjects.Text;
+        const audioIcon = container.getByName('audioIcon') as Phaser.GameObjects.Text;
+
+        if (videoIcon) videoIcon.setVisible(!!isVideoOn);
+        if (audioIcon) audioIcon.setVisible(!!isAudioOn);
+    }
+
     private removeOtherPlayer(playerId: string) {
-        console.log('Removing other player:', playerId);
         const container = this.otherPlayers.get(playerId);
         if (container) {
             container.destroy();
@@ -109,27 +119,26 @@ export class MapScene extends Phaser.Scene {
     private createAvatarContainer(userName: string, isLocal: boolean): Phaser.GameObjects.Container {
         const container = this.add.container(0, 0);
 
-        // Shadow/Under
+        // Shadow
         const shadow = this.add.ellipse(0, 10, 24, 8, 0x000000, 0.3);
         container.add(shadow);
 
-        // Legs (Static for remote for now, or animated if we track walking)
+        // Legs
         const leftLeg = this.add.rectangle(-6, 8, 8, 14, 0x1565c0);
         const rightLeg = this.add.rectangle(6, 8, 8, 14, 0x1565c0);
         container.add(leftLeg);
         container.add(rightLeg);
 
         // Body
-        const body = this.add.circle(0, 0, 12, isLocal ? 0xff5722 : 0x4caf50); // Orange for local, Green for remote
+        const body = this.add.circle(0, 0, 12, isLocal ? 0xff5722 : 0x4caf50);
         container.add(body);
 
-        // Head (Simple)
+        // Head
         const head = this.add.circle(0, -14, 10, 0xffcc80);
         container.add(head);
 
         // Name Tag
         const nameBg = this.add.rectangle(0, -35, 60, 20, 0x000000, 0.5);
-        // nameBg.setOrigin(0.5); // Rectangle default origin is 0.5
         container.add(nameBg);
 
         const nameText = this.add.text(0, -35, userName, {
@@ -139,6 +148,17 @@ export class MapScene extends Phaser.Scene {
         });
         nameText.setOrigin(0.5);
         container.add(nameText);
+
+        // Status Icons
+        const videoIcon = this.add.text(15, -15, '📹', { fontSize: '14px' });
+        videoIcon.setName('videoIcon');
+        videoIcon.setVisible(false);
+        container.add(videoIcon);
+
+        const audioIcon = this.add.text(-25, -15, '🎤', { fontSize: '14px' });
+        audioIcon.setName('audioIcon');
+        audioIcon.setVisible(false);
+        container.add(audioIcon);
 
         container.setDepth(isLocal ? 100 : 90);
         return container;
@@ -161,6 +181,8 @@ export class MapScene extends Phaser.Scene {
         this.rooms = data.rooms || [];
         this.vehicles = data.vehicles || [];
         this.socket = data.socket;
+        this.userId = data.userId || null;
+
         // Store user/space data for future use (e.g., multiplayer)
         console.log('MapScene initialized:', {
             roomCount: this.rooms.length,
