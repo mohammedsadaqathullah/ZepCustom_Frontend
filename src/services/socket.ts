@@ -9,9 +9,16 @@ class SocketService {
     connect() {
         if (this.socket?.connected) return;
 
+        console.log('🔌 Connecting to Socket.IO server:', SOCKET_URL);
+
         this.socket = io(SOCKET_URL, {
-            transports: ['websocket'],
+            transports: ['websocket', 'polling'],
             autoConnect: true,
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            reconnectionAttempts: 5,
+            timeout: 20000,
         });
 
         this.socket.on('connect', () => {

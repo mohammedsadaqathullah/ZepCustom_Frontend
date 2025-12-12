@@ -192,11 +192,18 @@ export function useSpaceRoom() {
                 });
 
                 socketService.on('players:list', (existingPlayers: Player[]) => {
+                    console.log('📋 Received players list:', existingPlayers.length, 'players');
+                    console.log('📋 Players:', existingPlayers.map(p => ({ id: p.id, userId: p.userId, name: p.userName })));
                     setPlayers(new Map(existingPlayers.map(p => [p.id, p])));
                 });
 
                 socketService.on('player:joined', (player: Player) => {
-                    setPlayers(prev => new Map(prev).set(player.id, player));
+                    console.log('👋 Player joined:', player.userName, 'ID:', player.id, 'UserID:', player.userId);
+                    setPlayers(prev => {
+                        const newMap = new Map(prev).set(player.id, player);
+                        console.log('📊 Total players now:', newMap.size);
+                        return newMap;
+                    });
                     setJoinNotification(`${player.userName} joined`);
                     setTimeout(() => setJoinNotification(null), 3000);
                 });
@@ -214,12 +221,17 @@ export function useSpaceRoom() {
                     });
                 });
 
-                socketService.on('player:moved', ({ playerId, x, y, direction, isWalking }) => {
+                socketService.on('player:moved', ({ playerId, userId, userName, x, y, direction, isWalking }) => {
+                    // Skip if this is our own movement
+                    if (userId === user.id) return;
+
                     setPlayers(prev => {
                         const newMap = new Map(prev);
                         const player = newMap.get(playerId);
                         if (player) {
                             newMap.set(playerId, { ...player, x, y, direction, isWalking });
+                        } else {
+                            console.log('⚠️ Received movement for unknown player:', playerId, userName);
                         }
                         return newMap;
                     });
@@ -237,6 +249,7 @@ export function useSpaceRoom() {
                 });
 
                 socketService.on('player:video-toggle', ({ playerId, isVideoOn }) => {
+                    console.log(`📹 Video toggle for player ${playerId}:`, isVideoOn);
                     setPlayers(prev => {
                         const newMap = new Map(prev);
                         const player = newMap.get(playerId);
@@ -248,6 +261,7 @@ export function useSpaceRoom() {
                 });
 
                 socketService.on('player:audio-toggle', ({ playerId, isAudioOn }) => {
+                    console.log(`🎤 Audio toggle for player ${playerId}:`, isAudioOn);
                     setPlayers(prev => {
                         const newMap = new Map(prev);
                         const player = newMap.get(playerId);
