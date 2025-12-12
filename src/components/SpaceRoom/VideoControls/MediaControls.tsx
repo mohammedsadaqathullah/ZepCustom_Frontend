@@ -54,10 +54,9 @@ export function MediaControls({
             gap: '16px',
             zIndex: 1000,
             padding: '10px 20px',
-            // background: 'rgba(0, 0, 0, 0.3)', // Removed background as requested
-            borderRadius: '24px',
-            // backdropFilter: 'blur(8px)' // Removed blur as well to be fully transparent if that's the goal, or keep blur? User said "remove full width bg". This component is not full width.
-            // Let's assume they want NO background on the bar itself, just floating buttons.
+            background: 'transparent',
+            boxShadow: 'none',
+            backdropFilter: 'none',
         }}>
             <button onClick={onToggleVideo} style={buttonStyle(!isVideoOn, true)} title={isVideoOn ? "Turn Video Off" : "Turn Video On"}>
                 {isVideoOn ? <FaVideo /> : <FaVideoSlash />}

@@ -110,11 +110,14 @@ export function useSpaceRoom() {
     };
 
     // Avatar customization
-    const handleAvatarSave = async (data: { config?: AvatarConfig; avatarUrl?: string }) => {
+    const handleAvatarSave = async (data: { config?: AvatarConfig; avatarUrl?: string | null }) => {
         const { config, avatarUrl } = data;
 
         if (config) setMyAvatarConfig(config);
-        if (avatarUrl !== undefined) setMyAvatarUrl(avatarUrl);
+        if (avatarUrl !== undefined) setMyAvatarUrl(avatarUrl || undefined); // Convert null to undefined for state if needed, or keep null.
+        // Actually state can be undefined | string. Reset to undefined if null.
+        if (avatarUrl === null) setMyAvatarUrl(undefined);
+        if (typeof avatarUrl === 'string') setMyAvatarUrl(avatarUrl);
 
         const socket = socketService.getSocket();
 
@@ -341,14 +344,23 @@ export function useSpaceRoom() {
                     });
                 });
 
-                socketService.on('player:avatar-update', ({ playerId, config, avatarUrl }) => { // destructure avatarUrl
+                socketService.on('player:avatar-update', ({ playerId, config, avatarUrl }) => {
                     setPlayers(prev => {
                         const newMap = new Map(prev);
                         const player = newMap.get(playerId);
                         if (player) {
+                            // If avatarUrl is explicitly null, remove it (undefined).
+                            // If it's a string, update it.
+                            // If undefined, do nothing (keep existing).
                             const updates: any = {};
                             if (config) updates.avatarConfig = config;
-                            if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+
+                            if (avatarUrl === null) {
+                                updates.avatarUrl = undefined;
+                            } else if (typeof avatarUrl === 'string') {
+                                updates.avatarUrl = avatarUrl;
+                            }
+
                             newMap.set(playerId, { ...player, ...updates });
                         }
                         return newMap;

@@ -5,8 +5,8 @@ import { ImageUploader } from './ImageUploader';
 
 interface Props {
     initialConfig?: AvatarConfig;
-    initialAvatarUrl?: string; // Added prop
-    onSave: (data: { config?: AvatarConfig; avatarUrl?: string }) => void; // Updated signature
+    initialAvatarUrl?: string | null; // Added prop
+    onSave: (data: { config?: AvatarConfig; avatarUrl?: string | null }) => void; // Updated signature
     onClose: () => void;
 }
 
@@ -21,7 +21,11 @@ export default function AvatarCustomizer({ initialConfig, initialAvatarUrl, onSa
 
     const handleSave = () => {
         if (activeTab === 'generate') {
-            onSave({ config, avatarUrl: undefined }); // Clear avatarUrl if switching to generated
+            onSave({ config, avatarUrl: null }); // Clear avatarUrl if switching to generated in hook
+            // actually we need to signal CLEARING. passing null is better.
+            // onSave({ config, avatarUrl: null as any }); // Type safety might complain.
+            // Let's check type in useSpaceRoom. It expects string | undefined. 
+            // We should update the interface.
         } else {
             if (uploadedImage) {
                 onSave({ avatarUrl: uploadedImage, config: undefined }); // Clear config if using image (optional, or keep generic one)
