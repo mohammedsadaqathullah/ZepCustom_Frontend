@@ -497,7 +497,7 @@ export function useSpaceRoom() {
         });
 
         previousNearbyUsers.current = currentNearbyUserIds;
-    }, [nearbyPlayers, createOffer, closePeerConnection, hasPeer]);
+    }, [nearbyPlayers, createOffer, closePeerConnection, hasPeer, localStream]);
 
     return {
         // Refs
