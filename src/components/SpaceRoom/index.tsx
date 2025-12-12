@@ -10,7 +10,7 @@ import { MediaControls } from './VideoControls/MediaControls';
 import { VideoSidebar } from './VideoControls/VideoSidebar';
 import { FullscreenVideo } from './VideoControls/FullscreenVideo';
 import { ChatPanel } from './ChatPanel/ChatPanel';
-import { SelfVideoWidget } from './UI/SelfVideoWidget';
+// import { SelfVideoWidget } from './UI/SelfVideoWidget'; // Removed
 
 export default function SpaceRoom() {
     const {
@@ -62,7 +62,7 @@ export default function SpaceRoom() {
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
             {/* Main Game Area */}
-            <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#2d3748' }}>
+            <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: 'transparent' }}>
                 {/* Header */}
                 <SpaceHeader
                     spaceName={space?.name}
@@ -172,7 +172,7 @@ export default function SpaceRoom() {
                 onClose={() => setFullscreenVideo(null)}
             />
 
-            {/* Video Sidebar */}
+            {/* Video Sidebar (Includes Self Video) */}
             <VideoSidebar
                 isVideoOn={isVideoOn}
                 localStream={localStream}
@@ -183,17 +183,9 @@ export default function SpaceRoom() {
                 remoteStreams={remoteStreams}
                 showChat={showChat}
                 onVideoClick={setFullscreenVideo}
-            />
-
-            {/* Self Video Widget (Persistent Right Side) */}
-            <SelfVideoWidget
-                isVideoOn={isVideoOn}
-                isAudioOn={isAudioOn}
-                localStream={localStream}
-                avatarConfig={myAvatarConfig}
-                avatarUrl={myAvatarUrl} // Added prop
-                userName={user?.displayName}
-                showChat={showChat}
+                myAvatarConfig={myAvatarConfig}
+                myAvatarUrl={myAvatarUrl}
+                myUserName={user?.displayName}
             />
 
             {/* Message Notification */}

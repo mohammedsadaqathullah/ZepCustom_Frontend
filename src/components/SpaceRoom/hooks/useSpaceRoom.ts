@@ -440,7 +440,11 @@ export function useSpaceRoom() {
             if (isVideoOn && !isScreenSharing) {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({
-                        video: true,
+                        video: {
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 },
+                            frameRate: { ideal: 30 }
+                        },
                         audio: isAudioOn
                     });
                     setLocalStream(stream);

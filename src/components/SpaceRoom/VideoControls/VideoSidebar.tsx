@@ -2,17 +2,22 @@ import React from 'react';
 import type { Player } from '../types';
 import Avatar from 'react-nice-avatar';
 import { FaMicrophone, FaMicrophoneSlash } from 'react-icons/fa';
+import { SelfVideoWidget } from '../UI/SelfVideoWidget';
+import type { AvatarConfig } from '../../../types/avatar';
 
 interface VideoSidebarProps {
     isVideoOn: boolean;
-    localStream: MediaStream | null; // Unused but kept for interface compatibility if needed, else comment out
-    isScreenSharing: boolean; // Unused
-    isAudioOn: boolean; // Unused
+    localStream: MediaStream | null;
+    isScreenSharing: boolean;
+    isAudioOn: boolean;
     fullscreenVideo: string | null;
     nearbyPlayers: Player[];
     remoteStreams: Map<string, MediaStream>;
     showChat: boolean;
     onVideoClick: (userId: string | 'me') => void;
+    myAvatarConfig: AvatarConfig;
+    myAvatarUrl?: string;
+    myUserName?: string;
 }
 
 import { genConfig } from 'react-nice-avatar'; // Added genConfig import
@@ -125,19 +130,21 @@ const RemoteVideoPlayer = ({
                 justifyContent: 'center',
                 border: '1px solid #e2e8f0'
             }}>
-                {hasVideo ? (
-                    <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover' // Changed from contain to cover
-                        }}
-                    />
-                ) : (
-                    <div style={{ width: '80px', height: '80px' }}>
+                {/* Always render video for audio playback, hide if no video track */}
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        display: hasVideo ? 'block' : 'none'
+                    }}
+                />
+
+                {!hasVideo && (
+                    <div style={{ width: '80px', height: '80px', position: 'absolute' }}>
                         {/* Fallback avatar if no video */}
                         <div style={{ width: '100%', height: '100%' }}>
                             {avatarUrl ? (
@@ -185,50 +192,79 @@ const RemoteVideoPlayer = ({
 
 export function VideoSidebar({
     isVideoOn,
+    localStream,
+    isScreenSharing,
+    isAudioOn,
     fullscreenVideo,
     nearbyPlayers,
     remoteStreams,
     showChat,
-    onVideoClick
+    onVideoClick,
+    myAvatarConfig,
+    myAvatarUrl,
+    myUserName
 }: VideoSidebarProps) {
-    if (nearbyPlayers.length === 0) return null;
+    // Show sidebar if there are nearby players OR if local video is on/available
+    // Actually always show it if we are in the room, to show Self View? 
+    // User requested consistency. Let's show it always, or at least when there's *something* to show.
+    // Ideally always show Self View.
 
     return (
-        <div style={{
-            position: 'absolute',
-            top: '230px',
-            right: showChat ? '340px' : '20px',
-            width: '240px',
-            maxHeight: 'calc(100vh - 250px)',
-            // Remove transparent background since items are now cards
-            padding: '0',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            zIndex: 100,
-            transition: 'right 0.3s ease',
-            paddingRight: '4px', // Space for scrollbar
-            scrollbarWidth: 'thin',
-            scrollbarColor: '#48bb78 rgba(0,0,0,0.3)'
-        }}>
-            {/* Remote Videos */}
-            {nearbyPlayers
-                .filter(p => fullscreenVideo !== p.userId)
-                .map(player => (
-                    <RemoteVideoPlayer
-                        key={player.userId}
-                        stream={remoteStreams.get(player.userId)}
-                        userName={player.userName}
-                        isAudioOn={!!player.isAudioOn}
-                        isVideoOn={!!player.isVideoOn}
-                        onClick={() => onVideoClick(player.userId)}
-                        avatarConfig={player.avatarConfig}
-                        avatarUrl={player.avatarUrl} // Added
-                    />
-                ))}
-        </div>
+        <>
+            <style>
+                {`
+                    .no-scrollbar::-webkit-scrollbar {
+                        display: none;
+                    }
+                    .no-scrollbar {
+                        -ms-overflow-style: none;
+                        scrollbar-width: none;
+                    }
+                `}
+            </style>
+            <div className="no-scrollbar" style={{
+                position: 'absolute',
+                top: '20px', // Started from top
+                right: showChat ? '340px' : '20px',
+                width: '200px', // Reduced size
+                maxHeight: 'calc(100vh - 140px)', // Adjust for bottom bar
+                padding: '0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                zIndex: 100,
+                transition: 'right 0.3s ease'
+            }}>
+                {/* Self Video Widget */}
+                <SelfVideoWidget
+                    isVideoOn={isVideoOn}
+                    isAudioOn={isAudioOn}
+                    localStream={localStream}
+                    avatarConfig={myAvatarConfig}
+                    avatarUrl={myAvatarUrl}
+                    userName={myUserName}
+                    showChat={showChat} // Passed but unused in style now
+                />
+
+                {/* Remote Videos */}
+                {nearbyPlayers
+                    .filter(p => fullscreenVideo !== p.userId)
+                    .map(player => (
+                        <RemoteVideoPlayer
+                            key={player.userId}
+                            stream={remoteStreams.get(player.userId)}
+                            userName={player.userName}
+                            isAudioOn={!!player.isAudioOn}
+                            isVideoOn={!!player.isVideoOn}
+                            onClick={() => onVideoClick(player.userId)}
+                            avatarConfig={player.avatarConfig}
+                            avatarUrl={player.avatarUrl}
+                        />
+                    ))}
+            </div>
+        </>
     );
 }
 
