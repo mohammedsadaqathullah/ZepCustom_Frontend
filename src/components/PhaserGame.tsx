@@ -10,7 +10,7 @@ interface PhaserGameProps {
     userName?: string;
     spaceId?: string;
     players?: Map<string, any>;
-    onPositionUpdate?: (position: { x: number, y: number, direction: string, isWalking: boolean }) => void;
+    onPositionUpdate?: (position: { x: number, y: number, direction: string, isWalking: boolean, roomId: string | null }) => void;
     isVideoOn?: boolean;
     isAudioOn?: boolean;
 }

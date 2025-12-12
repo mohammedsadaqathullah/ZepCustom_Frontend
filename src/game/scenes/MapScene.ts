@@ -404,13 +404,26 @@ export class MapScene extends Phaser.Scene {
         }
 
         this.checkProximity();
-        this.updateFogOfWar();
+
+        const currentRoom = this.getCurrentRoom(this.player.x, this.player.y);
+
+        // Vehicle interaction (omitted check)
+        // ...
+
+        this.updateFogOfWar(currentRoom);
+    }
+
+    private getCurrentRoom(x: number, y: number): Room | null {
+        return this.rooms.find(room =>
+            x >= room.x && x <= room.x + room.width &&
+            y >= room.y && y <= room.y + room.height
+        ) || null;
     }
 
     private fogGraphics: Phaser.GameObjects.Graphics | null = null;
-    private readonly PROXIMITY_RADIUS = 300; // Match frontend proximity setting
+    private readonly PROXIMITY_RADIUS = 150; // Match frontend proximity setting (synced)
 
-    updateFogOfWar() {
+    updateFogOfWar(currentRoom: Room | null) {
         if (!this.player) return;
 
         // Create fog graphics if it doesn't exist
@@ -421,23 +434,40 @@ export class MapScene extends Phaser.Scene {
 
         this.fogGraphics.clear();
 
-        const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
-        const playerX = playerBody.center.x;
-        const playerY = playerBody.center.y;
+        // Draw subtle dim overlay everywhere
+        this.fogGraphics.fillStyle(0x000000, 0.3); // Global dimness
 
-        // Draw subtle dim overlay everywhere except near player
-        // Top area
-        this.fogGraphics.fillStyle(0x000000, 0.3);
-        this.fogGraphics.fillRect(0, 0, 2000, Math.max(0, playerY - this.PROXIMITY_RADIUS));
+        if (currentRoom) {
+            // IF IN ROOM: Clear the WHOLE room area, but keep everything else dim
+            // We draw 4 rectangles surrounding the room to create a "hole"
 
-        // Bottom area
-        this.fogGraphics.fillRect(0, playerY + this.PROXIMITY_RADIUS, 2000, 1500 - (playerY + this.PROXIMITY_RADIUS));
+            // Top
+            this.fogGraphics.fillRect(0, 0, 2000, currentRoom.y);
+            // Bottom
+            this.fogGraphics.fillRect(0, currentRoom.y + currentRoom.height, 2000, 1500 - (currentRoom.y + currentRoom.height));
+            // Left (beside room)
+            this.fogGraphics.fillRect(0, currentRoom.y, currentRoom.x, currentRoom.height);
+            // Right (beside room)
+            this.fogGraphics.fillRect(currentRoom.x + currentRoom.width, currentRoom.y, 2000 - (currentRoom.x + currentRoom.width), currentRoom.height);
 
-        // Left area
-        this.fogGraphics.fillRect(0, playerY - this.PROXIMITY_RADIUS, Math.max(0, playerX - this.PROXIMITY_RADIUS), this.PROXIMITY_RADIUS * 2);
+        } else {
+            // IF OUTSIDE: Standard circular flashlight
+            const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+            const playerX = playerBody.center.x;
+            const playerY = playerBody.center.y;
 
-        // Right area
-        this.fogGraphics.fillRect(playerX + this.PROXIMITY_RADIUS, playerY - this.PROXIMITY_RADIUS, 2000 - (playerX + this.PROXIMITY_RADIUS), this.PROXIMITY_RADIUS * 2);
+            // Top area
+            this.fogGraphics.fillRect(0, 0, 2000, Math.max(0, playerY - this.PROXIMITY_RADIUS));
+
+            // Bottom area
+            this.fogGraphics.fillRect(0, playerY + this.PROXIMITY_RADIUS, 2000, 1500 - (playerY + this.PROXIMITY_RADIUS));
+
+            // Left area
+            this.fogGraphics.fillRect(0, playerY - this.PROXIMITY_RADIUS, Math.max(0, playerX - this.PROXIMITY_RADIUS), this.PROXIMITY_RADIUS * 2);
+
+            // Right area
+            this.fogGraphics.fillRect(playerX + this.PROXIMITY_RADIUS, playerY - this.PROXIMITY_RADIUS, 2000 - (playerX + this.PROXIMITY_RADIUS), this.PROXIMITY_RADIUS * 2);
+        }
     }
 
     drawAllRooms() {
@@ -1210,42 +1240,9 @@ export class MapScene extends Phaser.Scene {
         const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
         const playerCenter = playerBody.center;
 
-        // 1. Check if inside any room
-        let currentRoomId: string | null = null;
-
-        // Check room bounds
-        this.rooms.forEach(room => {
-            const bounds = new Phaser.Geom.Rectangle(room.x, room.y, room.width, room.height);
-            if (Phaser.Geom.Rectangle.Contains(bounds, playerCenter.x, playerCenter.y)) {
-                currentRoomId = (room as any).roomId;
-            }
-        });
-
-        // 2. If not in a room, check for nearby rooms (within 100px)
-        if (!currentRoomId) {
-            let closestDist = Infinity;
-            let closestRoomId: string | null = null;
-
-            this.rooms.forEach(room => {
-                const bounds = new Phaser.Geom.Rectangle(room.x, room.y, room.width, room.height);
-
-                // Calculate distance from player center to room rectangle
-                // This is a simplified check: distance to closest point on rect
-                const closestX = Phaser.Math.Clamp(playerCenter.x, bounds.x, bounds.right);
-                const closestY = Phaser.Math.Clamp(playerCenter.y, bounds.y, bounds.bottom);
-
-                const dist = Phaser.Math.Distance.Between(playerCenter.x, playerCenter.y, closestX, closestY);
-
-                if (dist < 100 && dist < closestDist) {
-                    closestDist = dist;
-                    closestRoomId = (room as any).roomId;
-                }
-            });
-
-            if (closestRoomId) {
-                currentRoomId = closestRoomId;
-            }
-        }
+        // 1. Strict Room Check (Privacy)
+        const currentRoom = this.getCurrentRoom(playerCenter.x, playerCenter.y);
+        const currentRoomId = currentRoom ? currentRoom.id : null;
 
         // Emit movement update
         if (currentRoomId !== this.lastRoomId ||
@@ -1269,14 +1266,16 @@ export class MapScene extends Phaser.Scene {
                     x: Math.round(playerCenter.x),
                     y: Math.round(playerCenter.y),
                     direction,
-                    isWalking
+                    isWalking,
+                    roomId: currentRoomId
                 });
                 this.socket.emit('player:move', {
                     spaceId: this.spaceId,
                     x: playerCenter.x,
                     y: playerCenter.y,
                     direction,
-                    isWalking
+                    isWalking,
+                    roomId: currentRoomId
                 });
             }
 
@@ -1285,12 +1284,13 @@ export class MapScene extends Phaser.Scene {
             this.lastY = playerCenter.y;
             this.lastUpdate = now;
 
-            // Emit position update for proximity calculations
+            // Emit position update for proximity calculations (Frontend State)
             this.game.events.emit('player-position-update', {
                 x: playerCenter.x,
                 y: playerCenter.y,
                 direction,
-                isWalking
+                isWalking,
+                roomId: currentRoomId
             });
         }
     }

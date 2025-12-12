@@ -61,7 +61,7 @@ class SocketService {
         }
     }
 
-    emitMove(x: number, y: number, direction: string, isWalking: boolean) {
+    emitMove(x: number, y: number, direction: string, isWalking: boolean, roomId?: string | null) {
         if (!this.socket || !this.spaceId) return;
 
         this.socket.emit('player:move', {
@@ -70,6 +70,7 @@ class SocketService {
             y,
             direction,
             isWalking,
+            roomId,
         });
     }
 

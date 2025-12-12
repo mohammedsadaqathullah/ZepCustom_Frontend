@@ -11,6 +11,7 @@ export interface Player {
     isVideoOn?: boolean;
     isAudioOn?: boolean;
     isDancing?: boolean;
+    roomId?: string | null; // Current room ID if inside a private zone
 }
 
 export interface ChatMessage {

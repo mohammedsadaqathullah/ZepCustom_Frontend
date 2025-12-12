@@ -24,7 +24,7 @@ export function useSpaceRoom() {
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
     const [space, setSpace] = useState<any>(null);
     const [players, setPlayers] = useState<Map<string, Player>>(new Map());
-    const [myPosition, setMyPosition] = useState({ x: 340, y: 500, direction: 'down', isWalking: false });
+    const [myPosition, setMyPosition] = useState({ x: 340, y: 500, direction: 'down', isWalking: false, roomId: null as string | null });
     const [isVideoOn, setIsVideoOn] = useState(false);
     const [isAudioOn, setIsAudioOn] = useState(false);
     const [isDancing, _setIsDancing] = useState(false);
@@ -52,10 +52,22 @@ export function useSpaceRoom() {
 
     // Calculate nearby players for proximity chat
     const nearbyPlayers = Array.from(players.values()).filter(player => {
-        const dx = player.x - myPosition.x;
-        const dy = player.y - myPosition.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        return distance <= PROXIMITY_RADIUS;
+        // STRICT PRIVACY LOGIC:
+        if (myPosition.roomId) {
+            // If I am in a room, I only see/hear others in the SAME room.
+            // Distance is irrelevant (assuming room size allows visibility).
+            return player.roomId === myPosition.roomId;
+        } else {
+            // If I am OUTSIDE (corridor/open space):
+            // 1. I do NOT see people inside rooms (!player.roomId).
+            // 2. I checks distance for standard proximity.
+            if (player.roomId) return false; // They are in a room, I am not.
+
+            const dx = player.x - myPosition.x;
+            const dy = player.y - myPosition.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance <= PROXIMITY_RADIUS;
+        }
     });
 
 
