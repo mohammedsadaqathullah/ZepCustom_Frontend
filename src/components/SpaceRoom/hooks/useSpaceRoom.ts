@@ -233,7 +233,8 @@ export function useSpaceRoom() {
                     setTimeout(() => setJoinNotification(null), 3000);
                 });
 
-                socketService.on('player:left', (playerId: string) => {
+                socketService.on('player:left', (data: { playerId: string }) => {
+                    const { playerId } = data;
                     setPlayers(prev => {
                         const newMap = new Map(prev);
                         const player = newMap.get(playerId);
