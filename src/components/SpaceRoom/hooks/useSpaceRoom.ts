@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { genConfig, type AvatarConfig } from 'react-nice-avatar';
 import { useAuthStore } from '../../../stores/authStore';
@@ -72,52 +72,28 @@ export function useSpaceRoom() {
 
 
 
-    // Toggle functions
+    // Toggle functions - State only
     const toggleVideo = () => {
-        const newState = !isVideoOn;
-        setIsVideoOn(newState);
+        setIsVideoOn(prev => !prev);
         if (isScreenSharing) setIsScreenSharing(false);
-
-        // Stop/start video tracks to turn off camera LED
-        if (localStream) {
-            localStream.getVideoTracks().forEach(track => {
-                if (newState) {
-                    track.enabled = true;
-                } else {
-                    track.stop(); // CRITICAL: stop() track to turn off hardware light
-                }
-            });
-        }
-
-        socketService.emitVideoToggle(newState);
-        console.log('📹 Video toggled:', newState);
+        socketService.emitVideoToggle(!isVideoOn);
     };
 
     const toggleAudio = () => {
-        const newState = !isAudioOn;
-        setIsAudioOn(newState);
-
-        if (localStream) {
-            localStream.getAudioTracks().forEach(track => {
-                track.enabled = newState;
-            });
-        }
-
-        socketService.emitAudioToggle(newState);
-        console.log('🎤 Audio toggled:', newState);
+        setIsAudioOn(prev => !prev);
+        socketService.emitAudioToggle(!isAudioOn);
     };
 
     const toggleScreenShare = () => {
-        if (isScreenSharing) {
-            setIsScreenSharing(false);
-            setIsVideoOn(false);
-            socketService.emitVideoToggle(false);
-            console.log('🖥️ Stopped screen sharing');
-        } else {
-            setIsScreenSharing(true);
+        setIsScreenSharing(prev => !prev);
+        if (!isScreenSharing) {
+            // Turning ON screen share -> Video also ON
             setIsVideoOn(true);
             socketService.emitVideoToggle(true);
-            console.log('🖥️ Started screen sharing');
+        } else {
+            // Turning OFF screen share -> Video OFF
+            setIsVideoOn(false);
+            socketService.emitVideoToggle(false);
         }
     };
 
@@ -126,19 +102,14 @@ export function useSpaceRoom() {
         const { config, avatarUrl } = data;
 
         if (config) setMyAvatarConfig(config);
-        if (avatarUrl !== undefined) setMyAvatarUrl(avatarUrl || undefined); // Convert null to undefined for state if needed, or keep null.
-        // Actually state can be undefined | string. Reset to undefined if null.
+        if (avatarUrl !== undefined) setMyAvatarUrl(avatarUrl || undefined);
         if (avatarUrl === null) setMyAvatarUrl(undefined);
-        if (typeof avatarUrl === 'string') setMyAvatarUrl(avatarUrl);
 
         const socket = socketService.getSocket();
-
-        // 1. Emit to others in real-time
         if (socket) {
             socket.emit('player:avatar-update', { spaceId, config, avatarUrl });
         }
 
-        // 2. Persist to Database
         try {
             await api.patch('/users/profile', {
                 avatarConfig: config,
@@ -179,7 +150,6 @@ export function useSpaceRoom() {
         if (!newMessage.trim() || !user || !spaceId) return;
 
         const socket = socketService.getSocket();
-        console.log('💬 Socket state:', socket?.connected, 'User:', user?.id, 'Space:', spaceId);
 
         if (socket && socket.connected) {
             if (chatTab === 'private' && selectedPrivateUser) {
@@ -204,19 +174,13 @@ export function useSpaceRoom() {
                     newChats.set(selectedPrivateUser, messages);
                     return newChats;
                 });
-
-                console.log('💬 Sending private message to:', selectedPrivateUser);
             } else {
                 // Send public message
-                console.log('💬 Emitting public message:', newMessage.trim());
                 socket.emit('chat:message', {
                     spaceId,
                     message: newMessage.trim()
                 });
-                console.log('💬 Public message emitted');
             }
-        } else {
-            console.error('❌ Socket not connected!');
         }
         setNewMessage('');
     };
@@ -230,18 +194,12 @@ export function useSpaceRoom() {
                 const response = await api.get(`/spaces/${spaceId}`);
                 setSpace(response.data);
 
-                // Fetch my profile to get saved avatar
                 try {
                     const profileRes = await api.get('/users/profile');
                     if (profileRes.data) {
                         const { avatarConfig, avatarUrl } = profileRes.data;
                         if (avatarConfig) setMyAvatarConfig(avatarConfig);
                         if (avatarUrl) setMyAvatarUrl(avatarUrl);
-
-                        // IMPORTANT: Emit this immediately after connect so others see me correctly?
-                        // Actually, better to rely on connect -> joinSpace.
-                        // Ideally joinSpace should send this data.
-                        // For now we will emit an update right after joining if we have data.
                     }
                 } catch (e) {
                     console.error('Failed to fetch profile', e);
@@ -253,39 +211,22 @@ export function useSpaceRoom() {
                     console.log('🔌 Socket connected in SpaceRoom');
                     setSocketReady(true);
                     socketService.joinSpace(spaceId, user.id, user.displayName, myPosition.x, myPosition.y);
-
-                    // Emit avatar state shortly after join to ensure everyone has it
-                    // (A hack until we add it to join payload)
-                    setTimeout(() => {
-                        // We need access to the CURRENT refs of config/url here.
-                        // Since this is inside useEffect closure, it might be stale.
-                        // We'll rely on the API fetch above setting state, but here we invoke a manual emit if we can.
-                        // Better: use a separate useEffect dependent on socketReady + myAvatarConfig/Url to sync?
-                        // Or just accept that for this task, persistence + manual update covers it.
-                    }, 500);
                 });
 
                 socketService.on('players:list', (existingPlayers: Player[]) => {
-                    console.log('📋 Received players list:', existingPlayers.length, 'players');
-                    console.log('📋 Players:', existingPlayers.map(p => ({ id: p.id, userId: p.userId, name: p.userName })));
+                    console.log('📋 Received players list:', existingPlayers.length);
                     setPlayers(new Map(existingPlayers.map(p => [p.id, p])));
                 });
 
                 socketService.on('player:joined', (player: Player) => {
-                    console.log('👋 Player joined:', player.userName, 'ID:', player.id, 'UserID:', player.userId);
+                    console.log('👋 Player joined:', player.userName);
                     setPlayers(prev => {
                         const newMap = new Map(prev);
-
-                        // Prevent Ghost Players: Remove any existing player with the same userId
-                        for (const [existingId, existingPlayer] of newMap.entries()) {
-                            if (existingPlayer.userId === player.userId) {
-                                console.log(`👻 Removing ghost player instance: ${existingId} for user ${player.userId}`);
-                                newMap.delete(existingId);
-                            }
+                        // Remove ghosts
+                        for (const [key, val] of newMap.entries()) {
+                            if (val.userId === player.userId) newMap.delete(key);
                         }
-
                         newMap.set(player.id, player);
-                        console.log('📊 Total players now:', newMap.size);
                         return newMap;
                     });
                     setJoinNotification(`${player.userName} joined`);
@@ -305,18 +246,13 @@ export function useSpaceRoom() {
                     });
                 });
 
-                socketService.on('player:moved', ({ playerId, userId, userName, x, y, direction, isWalking, roomId, vehicleId }) => {
-                    if (vehicleId) console.log(`🚗 Frontend received player:moved: vehicleId=${vehicleId} for ${userId}`);
-                    // Skip if this is our own movement
+                socketService.on('player:moved', ({ playerId, userId, x, y, direction, isWalking, roomId, vehicleId }) => {
                     if (userId === user.id) return;
-
                     setPlayers(prev => {
                         const newMap = new Map(prev);
                         const player = newMap.get(playerId);
                         if (player) {
                             newMap.set(playerId, { ...player, x, y, direction, isWalking, roomId, vehicleId });
-                        } else {
-                            console.log('⚠️ Received movement for unknown player:', playerId, userName);
                         }
                         return newMap;
                     });
@@ -326,36 +262,25 @@ export function useSpaceRoom() {
                     setPlayers(prev => {
                         const newMap = new Map(prev);
                         const player = newMap.get(playerId);
-                        if (player) {
-                            newMap.set(playerId, { ...player, isDancing });
-                        }
+                        if (player) newMap.set(playerId, { ...player, isDancing });
                         return newMap;
                     });
                 });
 
                 socketService.on('player:video-changed', ({ playerId, isVideoOn }) => {
-                    console.log(`📹 Video toggle for player ${playerId}:`, isVideoOn);
                     setPlayers(prev => {
                         const newMap = new Map(prev);
                         const player = newMap.get(playerId);
-                        if (player) {
-                            newMap.set(playerId, { ...player, isVideoOn });
-                        }
+                        if (player) newMap.set(playerId, { ...player, isVideoOn });
                         return newMap;
                     });
                 });
 
                 socketService.on('player:audio-changed', ({ playerId, isAudioOn }) => {
-                    console.log(`🎤 [DEBUG] Received audio-changed for ${playerId}, isAudioOn: ${isAudioOn}`);
                     setPlayers(prev => {
                         const newMap = new Map(prev);
                         const player = newMap.get(playerId);
-                        if (player) {
-                            console.log(`🎤 [DEBUG] Updating player ${player.userName} (${playerId}) audio to ${isAudioOn}`);
-                            newMap.set(playerId, { ...player, isAudioOn });
-                        } else {
-                            console.warn(`🎤 [DEBUG] Player ${playerId} not found in map during audio update! Keys:`, [...newMap.keys()]);
-                        }
+                        if (player) newMap.set(playerId, { ...player, isAudioOn });
                         return newMap;
                     });
                 });
@@ -365,18 +290,10 @@ export function useSpaceRoom() {
                         const newMap = new Map(prev);
                         const player = newMap.get(playerId);
                         if (player) {
-                            // If avatarUrl is explicitly null, remove it (undefined).
-                            // If it's a string, update it.
-                            // If undefined, do nothing (keep existing).
                             const updates: any = {};
                             if (config) updates.avatarConfig = config;
-
-                            if (avatarUrl === null) {
-                                updates.avatarUrl = undefined;
-                            } else if (typeof avatarUrl === 'string') {
-                                updates.avatarUrl = avatarUrl;
-                            }
-
+                            if (avatarUrl === null) updates.avatarUrl = undefined;
+                            else if (typeof avatarUrl === 'string') updates.avatarUrl = avatarUrl;
                             newMap.set(playerId, { ...player, ...updates });
                         }
                         return newMap;
@@ -391,9 +308,7 @@ export function useSpaceRoom() {
         initSpace();
 
         return () => {
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
-            }
+            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
             socketService.disconnect();
         };
     }, [user, spaceId]);
@@ -409,16 +324,13 @@ export function useSpaceRoom() {
                 playNotificationSound();
                 setTimeout(() => setNotification(null), 5000);
             }
-
-            const newMsg = {
+            setChatMessages(prev => [...prev, {
                 id: `${Date.now()}-${data.userId}-${Math.random()}`,
                 userId: data.userId,
                 userName: data.userName,
                 message: data.message,
                 timestamp: new Date(data.timestamp)
-            };
-
-            setChatMessages(prev => [...prev, newMsg]);
+            }]);
         };
 
         const handlePrivateMessage = (data: { fromUserId: string; fromUserName: string; message: string; timestamp: string }) => {
@@ -450,95 +362,146 @@ export function useSpaceRoom() {
         };
     }, [user, socketReady]);
 
-    // Media stream management
+    // Helper: Stop all tracks in a stream
+    const stopStream = (stream: MediaStream | null) => {
+        if (stream) {
+            stream.getTracks().forEach(track => {
+                track.stop();
+            });
+        }
+    };
+
+    // Effect 1: Handle Audio Enable/Disable (Lightweight)
     useEffect(() => {
-        const updateMediaStream = async () => {
-            if (isVideoOn && !isScreenSharing) {
+        if (localStream) {
+            localStream.getAudioTracks().forEach(track => {
+                track.enabled = isAudioOn;
+            });
+            // If we are MUTED, we might still want the track enabled but "soft muted" if using privacy? 
+            // Standard WebRTC is track.enabled = false stops sending data but keeps connection alive.
+        }
+    }, [isAudioOn, localStream]);
+
+    // Determine the current media mode
+    // This prevents re-running the acquisition effect when only creating minor state changes (like muting audio while video is on)
+    const streamMode = useMemo(() => {
+        if (isScreenSharing) return 'screen';
+        if (isVideoOn) return 'video';
+        if (isAudioOn) return 'audio'; // Video is Off, Screen is Off, but Audio is On
+        return 'none';
+    }, [isScreenSharing, isVideoOn, isAudioOn]);
+
+    // Effect 2: Media Stream Acquisition (Heavy)
+    useEffect(() => {
+        let isMounted = true;
+        let currentStream: MediaStream | null = null;
+
+        const acquireStream = async () => {
+            // Stop existing stream is handled by cleanup of previous effect run?
+            // Actually, since we depend on streamMode, if mode changes, cleanup runs.
+
+            if (streamMode === 'video') {
                 try {
+                    console.log('🎥 Requesting User Media (Video+Audio)');
                     const stream = await navigator.mediaDevices.getUserMedia({
                         video: {
                             width: { ideal: 1280 },
                             height: { ideal: 720 },
                             frameRate: { ideal: 30 }
                         },
-                        audio: isAudioOn
+                        audio: true
                     });
+
+                    if (!isMounted) { stopStream(stream); return; }
+
+                    stream.getAudioTracks().forEach(t => t.enabled = isAudioOn);
+
+                    currentStream = stream;
                     setLocalStream(stream);
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = stream;
-                    }
+                    if (videoRef.current) videoRef.current.srcObject = stream;
+
                 } catch (err) {
-                    console.error('Error accessing camera:', err);
-                    setIsVideoOn(false);
+                    console.warn('First attempt failed (Video+Audio). Trying Video only...', err);
+                    try {
+                        const videoStream = await navigator.mediaDevices.getUserMedia({
+                            video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+                            audio: false
+                        });
+                        if (!isMounted) { stopStream(videoStream); return; }
+                        currentStream = videoStream;
+                        setLocalStream(videoStream);
+                        if (videoRef.current) videoRef.current.srcObject = videoStream;
+                    } catch (videoErr) {
+                        console.error('Error accessing camera:', videoErr);
+                        if (isMounted) setIsVideoOn(false);
+                    }
                 }
-            } else if (isScreenSharing) {
+            } else if (streamMode === 'screen') {
                 try {
+                    console.log('🖥️ Requesting Screen Share');
                     const screenStream = await navigator.mediaDevices.getDisplayMedia({
                         video: true,
                         audio: false
                     });
 
-                    if (isAudioOn) {
-                        try {
-                            const audioStream = await navigator.mediaDevices.getUserMedia({
-                                audio: true,
-                                video: false
-                            });
-                            const combinedStream = new MediaStream([
-                                ...screenStream.getVideoTracks(),
-                                ...audioStream.getAudioTracks()
-                            ]);
-                            setLocalStream(combinedStream);
-                            if (videoRef.current) {
-                                videoRef.current.srcObject = combinedStream;
-                            }
-                        } catch (audioErr) {
-                            console.warn('Could not get microphone for screen share:', audioErr);
-                            setLocalStream(screenStream);
-                            if (videoRef.current) {
-                                videoRef.current.srcObject = screenStream;
-                            }
-                        }
-                    } else {
-                        setLocalStream(screenStream);
-                        if (videoRef.current) {
-                            videoRef.current.srcObject = screenStream;
-                        }
-                    }
+                    if (!isMounted) { stopStream(screenStream); return; }
 
-                    screenStream.getVideoTracks()[0].onended = () => {
-                        console.log('Screen share stopped by user');
-                        setIsScreenSharing(false);
-                        setIsVideoOn(false);
-                    };
-                    console.log('🖥️ Screen share started with audio:', isAudioOn);
+                    try {
+                        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        const tracks = [...screenStream.getVideoTracks(), ...audioStream.getAudioTracks()];
+                        const combinedStream = new MediaStream(tracks);
+
+                        screenStream.getVideoTracks()[0].onended = () => toggleScreenShare();
+                        combinedStream.getAudioTracks().forEach(t => t.enabled = isAudioOn);
+
+                        currentStream = combinedStream;
+                        setLocalStream(combinedStream);
+                        if (videoRef.current) videoRef.current.srcObject = combinedStream;
+
+                    } catch (audioErr) {
+                        console.warn('No mic for screen share:', audioErr);
+                        currentStream = screenStream;
+                        setLocalStream(screenStream);
+                        if (videoRef.current) videoRef.current.srcObject = screenStream;
+                        screenStream.getVideoTracks()[0].onended = () => toggleScreenShare();
+                    }
                 } catch (err) {
                     console.error('Error accessing screen:', err);
-                    setIsScreenSharing(false);
+                    if (isMounted) setIsScreenSharing(false);
                 }
-            } else if (!isVideoOn && !isScreenSharing) {
-                if (isAudioOn) {
-                    try {
-                        const audioStream = await navigator.mediaDevices.getUserMedia({
-                            audio: true,
-                            video: false
-                        });
-                        setLocalStream(audioStream);
-                        console.log('🎤 Audio-only stream started');
-                    } catch (err) {
-                        console.error('Error accessing microphone:', err);
-                    }
-                } else {
-                    setLocalStream(null);
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = null;
-                    }
+            } else if (streamMode === 'audio') {
+                try {
+                    console.log('🎤 Requesting Audio Only');
+                    const audioStream = await navigator.mediaDevices.getUserMedia({
+                        audio: true,
+                        video: false
+                    });
+
+                    if (!isMounted) { stopStream(audioStream); return; }
+
+                    currentStream = audioStream;
+                    setLocalStream(audioStream);
+                    if (videoRef.current) videoRef.current.srcObject = null;
+                } catch (err) {
+                    console.error('Error accessing microphone:', err);
                 }
+            } else {
+                // Mode 'none'
+                setLocalStream(null);
+                if (videoRef.current) videoRef.current.srcObject = null;
             }
         };
 
-        updateMediaStream();
-    }, [isVideoOn, isAudioOn, isScreenSharing]);
+        acquireStream();
+
+        return () => {
+            isMounted = false;
+            if (currentStream) {
+                console.log('🛑 Cleanup: stopping stream tracks for mode', streamMode);
+                stopStream(currentStream);
+            }
+        };
+    }, [streamMode]);
 
     // Manage WebRTC connections based on proximity
     useEffect(() => {

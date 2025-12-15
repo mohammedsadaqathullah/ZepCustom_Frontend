@@ -69,7 +69,12 @@ const RemoteVideoPlayer = ({
     React.useEffect(() => {
         if (videoRef.current && stream) {
             videoRef.current.srcObject = stream;
-            videoRef.current.play().catch(e => console.error('Error playing remote video:', e));
+            videoRef.current.play().catch(e => {
+                // Ignore AbortError which happens when the stream changes quickly
+                if (e.name !== 'AbortError') {
+                    console.error('Error playing remote video:', e);
+                }
+            });
         }
     }, [stream, videoTrackCount]); // Re-run if stream changes or tracks change
 
