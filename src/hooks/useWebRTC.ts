@@ -4,6 +4,7 @@ import { socketService } from '../services/socket';
 interface PeerConnection {
     pc: RTCPeerConnection;
     stream: MediaStream | null;
+    iceCandidateQueue: RTCIceCandidateInit[];
 }
 
 export function useWebRTC(myStream: MediaStream | null, spaceId: string | undefined, socketReady: boolean) {
@@ -198,7 +199,7 @@ export function useWebRTC(myStream: MediaStream | null, spaceId: string | undefi
             if (!peerConn) {
                 console.log('🔵 Creating new peer connection for:', userId);
                 const pc = createPeerConnection(userId);
-                peerConn = { pc, stream: null };
+                peerConn = { pc, stream: null, iceCandidateQueue: [] };
                 peerConnections.current.set(userId, peerConn);
             }
 
@@ -230,11 +231,25 @@ export function useWebRTC(myStream: MediaStream | null, spaceId: string | undefi
             if (!peerConn) {
                 console.log('🟡 Creating new peer connection for:', fromUserId);
                 const pc = createPeerConnection(fromUserId);
-                peerConn = { pc, stream: null };
+                peerConn = { pc, stream: null, iceCandidateQueue: [] };
                 peerConnections.current.set(fromUserId, peerConn);
             }
 
             await peerConn.pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+            // FLUSH ICE CANDIDATE QUEUE
+            if (peerConn.iceCandidateQueue.length > 0) {
+                console.log(`🧊 Flushing ${peerConn.iceCandidateQueue.length} queued ICE candidates for ${fromUserId}`);
+                for (const candidate of peerConn.iceCandidateQueue) {
+                    try {
+                        await peerConn.pc.addIceCandidate(new RTCIceCandidate(candidate));
+                    } catch (e) {
+                        console.error('Error adding queued ICE candidate:', e);
+                    }
+                }
+                peerConn.iceCandidateQueue = [];
+            }
+
             const answer = await peerConn.pc.createAnswer();
             await peerConn.pc.setLocalDescription(answer);
 
@@ -257,6 +272,20 @@ export function useWebRTC(myStream: MediaStream | null, spaceId: string | undefi
             if (peerConn && peerConn.pc.signalingState !== 'stable') {
                 await peerConn.pc.setRemoteDescription(new RTCSessionDescription(answer));
                 console.log('🟣 Answer processed successfully');
+
+                // FLUSH ICE CANDIDATE QUEUE
+                if (peerConn.iceCandidateQueue && peerConn.iceCandidateQueue.length > 0) {
+                    console.log(`🧊 Flushing ${peerConn.iceCandidateQueue.length} queued ICE candidates for ${fromUserId} (after answer)`);
+                    for (const candidate of peerConn.iceCandidateQueue) {
+                        try {
+                            await peerConn.pc.addIceCandidate(new RTCIceCandidate(candidate));
+                        } catch (e) {
+                            console.error('Error adding queued ICE candidate after answer:', e);
+                        }
+                    }
+                    peerConn.iceCandidateQueue = [];
+                }
+
             } else {
                 console.warn('⚠️ Cannot process answer - peer connection not found or already stable');
             }
@@ -270,8 +299,20 @@ export function useWebRTC(myStream: MediaStream | null, spaceId: string | undefi
         try {
             const peerConn = peerConnections.current.get(fromUserId);
             if (peerConn) {
-                await peerConn.pc.addIceCandidate(new RTCIceCandidate(candidate));
-                console.log('🔶 Added ICE candidate from:', fromUserId);
+                if (peerConn.pc.remoteDescription && peerConn.pc.remoteDescription.type) {
+                    // Signal is stable enough or has remote description, add immediately
+                    try {
+                        await peerConn.pc.addIceCandidate(new RTCIceCandidate(candidate));
+                        console.log('🔶 Added ICE candidate from:', fromUserId);
+                    } catch (e) {
+                        console.error('Error adding ICE candidate directly:', e);
+                    }
+                } else {
+                    // Queue the candidate (wait for offer/answer to set remote description)
+                    if (!peerConn.iceCandidateQueue) peerConn.iceCandidateQueue = [];
+                    peerConn.iceCandidateQueue.push(candidate);
+                    console.log(`🧊 Queuing ICE candidate from ${fromUserId} (Queue size: ${peerConn.iceCandidateQueue.length})`);
+                }
             } else {
                 console.warn('⚠️ Cannot add ICE candidate - peer connection not found for:', fromUserId);
             }
