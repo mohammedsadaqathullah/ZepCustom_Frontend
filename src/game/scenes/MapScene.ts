@@ -125,6 +125,61 @@ export class MapScene extends Phaser.Scene {
 
             // Update media status visuals
             this.updateAvatarMediaState(container, data.isVideoOn, data.isAudioOn);
+
+            // HANDLE REMOTE VEHICLE
+            // Check if player has a vehicleId
+            const vehicleId = data.vehicleId;
+            const currentVehicleId = (container as any).currentVehicleId;
+
+            if (vehicleId) {
+                console.log(`🚗 Remote player ${playerId} has vehicleId: ${vehicleId}`);
+            }
+
+            if (vehicleId && vehicleId !== currentVehicleId) {
+                // Player ENTERED a vehicle
+                console.log(`🚗 Remote player ${playerId} ENTERED vehicle ${vehicleId}`);
+                const vehicleContainer = this.vehicleMap.get(vehicleId);
+                if (vehicleContainer) {
+                    // Update internal tracking
+                    (container as any).currentVehicleId = vehicleId;
+                } else {
+                    console.warn(`⚠️ Vehicle ${vehicleId} not found in vehicleMap!`);
+                }
+            } else if (!vehicleId && currentVehicleId) {
+                // Player EXITED vehicle
+                console.log(`🚗 Remote player ${playerId} EXITED vehicle ${currentVehicleId}`);
+                (container as any).currentVehicleId = null;
+                // Vehicle stays at last position (implicitly handled by not updating it anymore)
+            }
+
+            // If player is in a vehicle, move the vehicle container to the player's new target position
+            // (We tween the vehicle too for smoothness, or just snap it)
+            if (vehicleId) {
+                const vehicleContainer = this.vehicleMap.get(vehicleId);
+                if (vehicleContainer) {
+                    this.tweens.killTweensOf(vehicleContainer);
+                    this.tweens.add({
+                        targets: vehicleContainer,
+                        x: data.x,
+                        y: data.y,
+                        duration: 70,
+                        ease: 'Linear'
+                    });
+
+                    // Rotate vehicle based on movement (similar to local player logic)
+                    // We can infer direction from data.direction or movement delta if needed.
+                    // For now, let's just use the direction passed in data if available, or just snap position.
+                    // data.direction is available ('left', 'right', 'up', 'down')
+
+                    if (data.direction === 'right') vehicleContainer.setRotation(Math.PI / 2);
+                    else if (data.direction === 'left') vehicleContainer.setRotation(-Math.PI / 2);
+                    else if (data.direction === 'down') vehicleContainer.setRotation(Math.PI);
+                    else if (data.direction === 'up') vehicleContainer.setRotation(0);
+
+                    // Ensure depth
+                    vehicleContainer.setDepth(container.depth - 1);
+                }
+            }
         }
     }
 
@@ -456,17 +511,41 @@ export class MapScene extends Phaser.Scene {
             const playerX = playerBody.center.x;
             const playerY = playerBody.center.y;
 
-            // Top area
-            this.fogGraphics.fillRect(0, 0, 2000, Math.max(0, playerY - this.PROXIMITY_RADIUS));
+            const r = this.PROXIMITY_RADIUS;
+            const flashlightX = playerX - r;
+            const flashlightY = playerY - r;
+            const flashlightW = r * 2;
+            const flashlightH = r * 2;
 
-            // Bottom area
-            this.fogGraphics.fillRect(0, playerY + this.PROXIMITY_RADIUS, 2000, 1500 - (playerY + this.PROXIMITY_RADIUS));
+            // 1. Draw the surrounding fog (Inverse of flashlight)
 
-            // Left area
-            this.fogGraphics.fillRect(0, playerY - this.PROXIMITY_RADIUS, Math.max(0, playerX - this.PROXIMITY_RADIUS), this.PROXIMITY_RADIUS * 2);
+            // Top area (above flashlight)
+            this.fogGraphics.fillRect(0, 0, 2000, Math.max(0, flashlightY));
 
-            // Right area
-            this.fogGraphics.fillRect(playerX + this.PROXIMITY_RADIUS, playerY - this.PROXIMITY_RADIUS, 2000 - (playerX + this.PROXIMITY_RADIUS), this.PROXIMITY_RADIUS * 2);
+            // Bottom area (below flashlight)
+            this.fogGraphics.fillRect(0, Math.min(1500, flashlightY + flashlightH), 2000, Math.max(0, 1500 - (flashlightY + flashlightH)));
+
+            // Left area (left of flashlight, within vertical bounds)
+            this.fogGraphics.fillRect(0, Math.max(0, flashlightY), Math.max(0, flashlightX), flashlightH);
+
+            // Right area (right of flashlight, within vertical bounds)
+            this.fogGraphics.fillRect(Math.min(2000, flashlightX + flashlightW), Math.max(0, flashlightY), Math.max(0, 2000 - (flashlightX + flashlightW)), flashlightH);
+
+            // 2. PRIVACY: Re-fog any ROOM areas that fall INSIDE the flashlight
+            // This prevents "X-Raying" into rooms from the hallway.
+            const flashlightRect = new Phaser.Geom.Rectangle(flashlightX, flashlightY, flashlightW, flashlightH);
+
+            this.rooms.forEach(room => {
+                const roomRect = new Phaser.Geom.Rectangle(room.x, room.y, room.width, room.height);
+                // Calculate intersection
+                const intersection = Phaser.Geom.Rectangle.Intersection(flashlightRect, roomRect);
+
+                if (!intersection.isEmpty()) {
+                    // Draw fog over the intersection part of the room
+                    // (This covers the part of the room revealed by the flashlight)
+                    this.fogGraphics.fillRect(intersection.x, intersection.y, intersection.width, intersection.height);
+                }
+            });
         }
     }
 
@@ -1267,7 +1346,8 @@ export class MapScene extends Phaser.Scene {
                     y: Math.round(playerCenter.y),
                     direction,
                     isWalking,
-                    roomId: currentRoomId
+                    roomId: currentRoomId,
+                    vehicleId: this.currentVehicle
                 });
                 this.socket.emit('player:move', {
                     spaceId: this.spaceId,
@@ -1275,7 +1355,8 @@ export class MapScene extends Phaser.Scene {
                     y: playerCenter.y,
                     direction,
                     isWalking,
-                    roomId: currentRoomId
+                    roomId: currentRoomId,
+                    vehicleId: this.currentVehicle
                 });
             }
 
@@ -1318,9 +1399,11 @@ export class MapScene extends Phaser.Scene {
             if (distance < 80) {
                 if (this.currentVehicle === vehicle.id) {
                     this.currentVehicle = null;
+                    console.log('🚗 Toggled Vehicle: EXITED');
                     this.showMessage('Exited vehicle');
                 } else {
                     this.currentVehicle = vehicle.id;
+                    console.log(`🚗 Toggled Vehicle: ENTERED ${vehicle.id}`);
                     this.showMessage(`Entered ${vehicle.type}!`);
                 }
                 return;

@@ -1,10 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from './stores/authStore';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import SpacesList from './pages/SpacesList';
 import SpaceRoom from './pages/SpaceRoom';
+import WelcomeScreen from './pages/WelcomeScreen';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -13,6 +14,8 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const { isAuthenticated, fetchUser } = useAuthStore();
+  // Show welcome screen if not shown in this session
+  const [showWelcome, setShowWelcome] = useState(() => !sessionStorage.getItem('welcomeShown'));
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -21,29 +24,39 @@ function App() {
   }, [isAuthenticated, fetchUser]);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route
-          path="/spaces"
-          element={
-            <PrivateRoute>
-              <SpacesList />
-            </PrivateRoute>
-          }
+    <>
+      {showWelcome && (
+        <WelcomeScreen
+          onComplete={() => {
+            setShowWelcome(false);
+            sessionStorage.setItem('welcomeShown', 'true');
+          }}
         />
-        <Route
-          path="/space/:spaceId"
-          element={
-            <PrivateRoute>
-              <SpaceRoom />
-            </PrivateRoute>
-          }
-        />
-        <Route path="/" element={<Navigate to={isAuthenticated ? "/spaces" : "/login"} />} />
-      </Routes>
-    </BrowserRouter>
+      )}
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/spaces"
+            element={
+              <PrivateRoute>
+                <SpacesList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/space/:spaceId"
+            element={
+              <PrivateRoute>
+                <SpaceRoom />
+              </PrivateRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to={isAuthenticated ? "/spaces" : "/login"} />} />
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
 

@@ -305,7 +305,8 @@ export function useSpaceRoom() {
                     });
                 });
 
-                socketService.on('player:moved', ({ playerId, userId, userName, x, y, direction, isWalking, roomId }) => {
+                socketService.on('player:moved', ({ playerId, userId, userName, x, y, direction, isWalking, roomId, vehicleId }) => {
+                    if (vehicleId) console.log(`🚗 Frontend received player:moved: vehicleId=${vehicleId} for ${userId}`);
                     // Skip if this is our own movement
                     if (userId === user.id) return;
 
@@ -313,7 +314,7 @@ export function useSpaceRoom() {
                         const newMap = new Map(prev);
                         const player = newMap.get(playerId);
                         if (player) {
-                            newMap.set(playerId, { ...player, x, y, direction, isWalking, roomId });
+                            newMap.set(playerId, { ...player, x, y, direction, isWalking, roomId, vehicleId });
                         } else {
                             console.log('⚠️ Received movement for unknown player:', playerId, userName);
                         }
@@ -332,7 +333,7 @@ export function useSpaceRoom() {
                     });
                 });
 
-                socketService.on('player:video-toggle', ({ playerId, isVideoOn }) => {
+                socketService.on('player:video-changed', ({ playerId, isVideoOn }) => {
                     console.log(`📹 Video toggle for player ${playerId}:`, isVideoOn);
                     setPlayers(prev => {
                         const newMap = new Map(prev);
@@ -344,13 +345,16 @@ export function useSpaceRoom() {
                     });
                 });
 
-                socketService.on('player:audio-toggle', ({ playerId, isAudioOn }) => {
-                    console.log(`🎤 Audio toggle for player ${playerId}:`, isAudioOn);
+                socketService.on('player:audio-changed', ({ playerId, isAudioOn }) => {
+                    console.log(`🎤 [DEBUG] Received audio-changed for ${playerId}, isAudioOn: ${isAudioOn}`);
                     setPlayers(prev => {
                         const newMap = new Map(prev);
                         const player = newMap.get(playerId);
                         if (player) {
+                            console.log(`🎤 [DEBUG] Updating player ${player.userName} (${playerId}) audio to ${isAudioOn}`);
                             newMap.set(playerId, { ...player, isAudioOn });
+                        } else {
+                            console.warn(`🎤 [DEBUG] Player ${playerId} not found in map during audio update! Keys:`, [...newMap.keys()]);
                         }
                         return newMap;
                     });

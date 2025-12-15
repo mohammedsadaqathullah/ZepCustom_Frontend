@@ -12,6 +12,7 @@ export interface Player {
     isAudioOn?: boolean;
     isDancing?: boolean;
     roomId?: string | null; // Current room ID if inside a private zone
+    vehicleId?: string | null; // ID of the vehicle the player is driving
 }
 
 export interface ChatMessage {

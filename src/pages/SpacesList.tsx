@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import api from '../services/api';
+import GalaxyScene from '../components/Dashboard/GalaxyScene';
+import CursorCanvas from '../components/CursorCanvas';
 
 interface Space {
     id: string;
@@ -71,114 +73,69 @@ export default function SpacesList() {
     };
 
     return (
-        <div style={{ minHeight: '100vh', background: '#f7fafc' }}>
-            {/* Header */}
-            <header style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '1rem 2rem' }}>
-                <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1a202c' }}>🏢 Virtual Spaces</h1>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                        <span style={{ color: '#718096' }}>Welcome, {user?.displayName}</span>
-                        <button
-                            onClick={logout}
-                            style={{ padding: '0.5rem 1rem', background: '#e2e8f0', color: '#4a5568', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                        >
-                            Logout
-                        </button>
-                    </div>
+        <div style={{ width: '100vw', height: '100vh', background: '#000', overflow: 'hidden', position: 'relative', cursor: 'none' }}>
+            <CursorCanvas />
+            {/* Minimalist Game-Like HUD */}
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', padding: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'start', zIndex: 10, pointerEvents: 'none' }}>
+                <div style={{ opacity: 0.8 }}>
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fff', letterSpacing: '2px', textTransform: 'uppercase' }}>Zi Space Dashboard</h1>
+                    <div style={{ width: '50px', height: '2px', background: '#00ffff', marginTop: '5px' }}></div>
+                    <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: '5px' }}>Welcome, {user?.displayName}</p>
                 </div>
-            </header>
 
-            {/* Main Content */}
-            <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                    <h2 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#1a202c' }}>Available Spaces</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', pointerEvents: 'auto' }}>
+                    {/* Holographic hex buttons */}
                     <button
                         onClick={() => setShowCreateModal(true)}
                         style={{
-                            padding: '0.75rem 1.5rem',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '8px',
-                            fontWeight: '600',
+                            padding: '1rem',
+                            background: 'rgba(0,0,0,0.5)',
+                            color: '#00ffff',
+                            border: '1px solid #00ffff',
+                            clipPath: 'polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%)',
+                            fontWeight: 'bold',
+                            fontSize: '0.8rem',
+                            letterSpacing: '1px',
                             cursor: 'pointer',
-                            transition: 'transform 0.2s'
+                            textTransform: 'uppercase',
+                            transition: 'all 0.2s',
+                            boxShadow: '0 0 10px rgba(0, 255, 255, 0.2)'
                         }}
-                        onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                        onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0, 255, 255, 0.1)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.5)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.5)'; e.currentTarget.style.boxShadow = '0 0 10px rgba(0, 255, 255, 0.2)'; }}
                     >
                         + Create Space
                     </button>
+                    <button
+                        onClick={logout}
+                        style={{
+                            padding: '1rem',
+                            background: 'rgba(0,0,0,0.5)',
+                            color: '#ef4444',
+                            border: '1px solid #ef4444',
+                            clipPath: 'polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%)',
+                            fontWeight: 'bold',
+                            fontSize: '0.8rem',
+                            letterSpacing: '1px',
+                            cursor: 'pointer',
+                            textTransform: 'uppercase',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(239, 68, 68, 0.5)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.5)'; e.currentTarget.style.boxShadow = 'none'; }}
+                    >
+                        Logout
+                    </button>
                 </div>
+            </div>
 
-                {loading ? (
-                    <div style={{ textAlign: 'center', padding: '4rem', color: '#718096' }}>Loading spaces...</div>
-                ) : spaces.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '4rem', background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                        <p style={{ fontSize: '1.25rem', color: '#718096', marginBottom: '1rem' }}>No spaces available yet</p>
-                        <p style={{ color: '#a0aec0' }}>Create your first space to get started!</p>
-                    </div>
-                ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                        {spaces.map((space) => (
-                            <div
-                                key={space.id}
-                                style={{
-                                    background: 'white',
-                                    borderRadius: '12px',
-                                    padding: '1.5rem',
-                                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                                    transition: 'transform 0.2s, box-shadow 0.2s',
-                                    cursor: 'pointer'
-                                }}
-                                onMouseOver={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(-4px)';
-                                    e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.15)';
-                                }}
-                                onMouseOut={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-                                }}
-                            >
-                                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#1a202c' }}>
-                                    {space.name}
-                                </h3>
-                                <p style={{ color: '#718096', fontSize: '0.875rem', marginBottom: '1rem' }}>
-                                    {space.description || 'No description'}
-                                </p>
-                                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.875rem', color: '#a0aec0', marginBottom: '1rem' }}>
-                                    <span>👥 {space._count.members} members</span>
-                                    <span>👤 {space.owner.displayName}</span>
-                                    <span style={{
-                                        padding: '0.25rem 0.5rem',
-                                        background: space.visibility === 'PUBLIC' ? '#c6f6d5' : '#fed7d7',
-                                        color: space.visibility === 'PUBLIC' ? '#22543d' : '#742a2a',
-                                        borderRadius: '4px',
-                                        fontSize: '0.75rem'
-                                    }}>
-                                        {space.visibility}
-                                    </span>
-                                </div>
-                                <button
-                                    onClick={() => handleJoinSpace(space.id)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.75rem',
-                                        background: '#667eea',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        fontWeight: '600',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    Join Space
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </main>
+            {loading ? (
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00ffff', fontSize: '1.5rem', letterSpacing: '5px' }}>
+                    INITIALIZING SENSORS...
+                </div>
+            ) : (
+                <GalaxyScene spaces={spaces} onJoin={handleJoinSpace} />
+            )}
 
             {/* Create Space Modal */}
             {showCreateModal && (
@@ -188,18 +145,30 @@ export default function SpacesList() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    background: 'rgba(0,0,0,0.5)',
+                    background: 'rgba(0,0,0,0.8)',
+                    backdropFilter: 'blur(5px)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     zIndex: 1000
                 }}>
-                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#1a202c' }}>Create New Space</h2>
+                    <div style={{
+                        background: 'rgba(20, 20, 40, 0.95)',
+                        border: '1px solid #4f46e5',
+                        padding: '2rem',
+                        borderRadius: '16px',
+                        width: '100%',
+                        maxWidth: '500px',
+                        maxHeight: '90vh',
+                        overflowY: 'auto',
+                        color: 'white',
+                        boxShadow: '0 0 50px rgba(79, 70, 229, 0.3)'
+                    }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#fff' }}>Construct New Base</h2>
                         <form onSubmit={handleCreateSpace}>
                             <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#4a5568', fontWeight: '500' }}>
-                                    Space Name
+                                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#a5b4fc', fontWeight: '500' }}>
+                                    Base Name
                                 </label>
                                 <input
                                     type="text"
@@ -207,14 +176,14 @@ export default function SpacesList() {
                                     onChange={(e) => setNewSpace({ ...newSpace, name: e.target.value })}
                                     required
                                     minLength={3}
-                                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}
-                                    placeholder="My Awesome Space"
+                                    style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid #4f46e5', borderRadius: '8px', color: 'white' }}
+                                    placeholder="Alpha Station"
                                 />
                             </div>
 
                             <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#4a5568', fontWeight: '500' }}>
-                                    Slug (URL-friendly)
+                                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#a5b4fc', fontWeight: '500' }}>
+                                    Coordinates (Slug)
                                 </label>
                                 <input
                                     type="text"
@@ -223,35 +192,35 @@ export default function SpacesList() {
                                     required
                                     minLength={3}
                                     pattern="[a-z0-9-]+"
-                                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}
-                                    placeholder="my-awesome-space"
+                                    style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid #4f46e5', borderRadius: '8px', color: 'white' }}
+                                    placeholder="alpha-station"
                                 />
                             </div>
 
                             <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#4a5568', fontWeight: '500' }}>
-                                    Description
+                                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#a5b4fc', fontWeight: '500' }}>
+                                    Mission Brief
                                 </label>
                                 <textarea
                                     value={newSpace.description}
                                     onChange={(e) => setNewSpace({ ...newSpace, description: e.target.value })}
-                                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '80px' }}
-                                    placeholder="Describe your space..."
+                                    style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid #4f46e5', borderRadius: '8px', minHeight: '80px', color: 'white' }}
+                                    placeholder="Describe mission objectives..."
                                 />
                             </div>
 
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#4a5568', fontWeight: '500' }}>
-                                    Visibility
+                                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#a5b4fc', fontWeight: '500' }}>
+                                    Security Level
                                 </label>
                                 <select
                                     value={newSpace.visibility}
                                     onChange={(e) => setNewSpace({ ...newSpace, visibility: e.target.value })}
-                                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid #4f46e5', borderRadius: '8px', color: 'white' }}
                                 >
-                                    <option value="PUBLIC">Public</option>
-                                    <option value="PRIVATE">Private</option>
-                                    <option value="INVITE_ONLY">Invite Only</option>
+                                    <option value="PUBLIC">Public Access</option>
+                                    <option value="PRIVATE">Classified</option>
+                                    <option value="INVITE_ONLY">Clearance Only</option>
                                 </select>
                             </div>
 
@@ -259,15 +228,15 @@ export default function SpacesList() {
                                 <button
                                     type="button"
                                     onClick={() => setShowCreateModal(false)}
-                                    style={{ flex: 1, padding: '0.75rem', background: '#e2e8f0', color: '#4a5568', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
+                                    style={{ flex: 1, padding: '0.75rem', background: 'transparent', color: '#a5b4fc', border: '1px solid #a5b4fc', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
                                 >
-                                    Cancel
+                                    Abort
                                 </button>
                                 <button
                                     type="submit"
                                     style={{ flex: 1, padding: '0.75rem', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
                                 >
-                                    Create
+                                    Initialize
                                 </button>
                             </div>
                         </form>

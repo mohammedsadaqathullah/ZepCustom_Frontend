@@ -119,7 +119,7 @@ export default function SpaceRoom() {
                     onToggleAudio={toggleAudio}
                     onToggleScreenShare={toggleScreenShare}
                     onCustomizeAvatar={() => setShowAvatarCustomizer(true)}
-                    onExit={() => navigate('/dashboard')}
+                    onExit={() => navigate('/spaces')}
                 />
 
                 {/* Proximity Info */}
