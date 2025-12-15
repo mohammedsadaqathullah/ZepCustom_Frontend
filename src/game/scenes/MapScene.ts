@@ -1188,8 +1188,8 @@ export class MapScene extends Phaser.Scene {
 
     createPlayer() {
         console.log('createPlayer called');
-        const startX = 340;
-        const startY = 500;
+        const startX = 1000;
+        const startY = 750;
 
         // Use shared helper
         this.player = this.createAvatarContainer(this.userName, true);
