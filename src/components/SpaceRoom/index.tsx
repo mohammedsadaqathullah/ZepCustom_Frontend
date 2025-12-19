@@ -1,4 +1,4 @@
-// import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import AvatarCustomizer from '../AvatarCustomizer';
 import PhaserGame from '../PhaserGame';
 import { useSpaceRoom } from './hooks/useSpaceRoom';
@@ -10,6 +10,7 @@ import { MediaControls } from './VideoControls/MediaControls';
 import { VideoSidebar } from './VideoControls/VideoSidebar';
 import { FullscreenVideo } from './VideoControls/FullscreenVideo';
 import { ChatPanel } from './ChatPanel/ChatPanel';
+import { EditControlPanel } from './UI/EditControlPanel';
 // import { SelfVideoWidget } from './UI/SelfVideoWidget'; // Removed
 
 export default function SpaceRoom() {
@@ -59,6 +60,73 @@ export default function SpaceRoom() {
         socket
     } = useSpaceRoom();
 
+    // Edit Mode State
+    const [isEditing, setIsEditing] = React.useState(false);
+
+    const handleAddRoom = () => {
+        // Implement logic to add room
+        console.log('Add Room Clicked');
+        const game = (window as any).phaserGame;
+        if (game) {
+            const scene = game.scene.getScene('MapScene');
+            if (scene) scene.addRoomMode();
+        }
+    };
+
+    const handleAddObject = (type: string) => {
+        // Implement logic to add object
+        console.log('Add Object Clicked:', type);
+        const game = (window as any).phaserGame;
+        if (game) {
+            const scene = game.scene.getScene('MapScene');
+            if (scene) scene.addObjectMode(type);
+        }
+    };
+
+    const [hasSelection, setHasSelection] = useState(false);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const game = (window as any).phaserGame;
+            if (game) {
+                game.events.off('selection-change'); // Clear old to be safe
+                game.events.on('selection-change', (data: { hasSelection: boolean }) => setHasSelection(data.hasSelection));
+                clearInterval(interval);
+            }
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleRotate = () => {
+        // Implement logic to rotate selection
+        console.log('Rotate Clicked');
+        const game = (window as any).phaserGame;
+        if (game) {
+            const scene = game.scene.getScene('MapScene');
+            if (scene) scene.rotateSelected();
+        }
+    };
+
+    const handleDelete = () => {
+        console.log('Delete Clicked');
+        const game = (window as any).phaserGame;
+        if (game) {
+            const scene = game.scene.getScene('MapScene');
+            if (scene) scene.deleteSelected();
+        }
+    };
+
+    const handleSaveString = () => {
+        // Implement logic to save map
+        console.log('Save Clicked');
+        const game = (window as any).phaserGame;
+        if (game) {
+            const scene = game.scene.getScene('MapScene');
+            if (scene) scene.saveMap();
+        }
+        setIsEditing(false);
+    };
+
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
             {/* Main Game Area */}
@@ -89,8 +157,21 @@ export default function SpaceRoom() {
                         onPositionUpdate={setMyPosition}
                         isVideoOn={isVideoOn}
                         isAudioOn={isAudioOn}
+                        isEditing={isEditing}
                     />
                 </div>
+
+                {/* Edit Control Panel */}
+                <EditControlPanel
+                    isEditing={isEditing}
+                    onToggleEdit={() => setIsEditing(!isEditing)}
+                    onAddRoom={handleAddRoom}
+                    onAddObject={handleAddObject}
+                    onRotate={handleRotate}
+                    onSave={handleSaveString}
+                    onDelete={handleDelete}
+                    hasSelection={hasSelection}
+                />
 
                 {/* Join Notification */}
                 {joinNotification && (

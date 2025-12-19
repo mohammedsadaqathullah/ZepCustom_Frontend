@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useMemo, useLayoutEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Stars, Text } from '@react-three/drei';
+import { Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import gsap from 'gsap';
 import WavyText from '../components/WavyText';
@@ -283,29 +283,7 @@ function CyberJet({ assembling, flying }: { assembling: boolean; flying: boolean
                     <boxGeometry args={[0.7, 0.2, 1.5]} />
                 </mesh>
 
-                {/* BRAND FLAG/LABEL */}
-                <group position={[0, 1.2, 0]}>
-                    <Text
-                        color="#00ffff"
-                        fontSize={0.6}
-                        anchorX="center"
-                        anchorY="middle"
-                        rotation={[0, Math.PI / 2, 0]} // Face Right
-                        fillOpacity={0.9}
-                    >
-                        Zi Space
-                    </Text>
-                    <Text
-                        color="#00ffff"
-                        fontSize={0.6}
-                        anchorX="center"
-                        anchorY="middle"
-                        rotation={[0, -Math.PI / 2, 0]} // Face Left
-                        fillOpacity={0.9}
-                    >
-                        Zi Space
-                    </Text>
-                </group>
+
             </group>
 
             {/* 2. Wings (Pivoted for animation) - Silver with Orange Accents */}

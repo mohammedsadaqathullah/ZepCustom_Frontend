@@ -8,6 +8,7 @@ interface Room {
     y: number;
     width: number;
     height: number;
+    rotation?: number; // Added rotation property
     entrances: Entrance[];
     furniture?: any[];
 }
@@ -49,7 +50,204 @@ export class MapScene extends Phaser.Scene {
     private vehicleMap: Map<string, Phaser.GameObjects.Container> = new Map();
     private otherPlayers: Map<string, Phaser.GameObjects.Container> = new Map();
 
+
+
     private userId: string | null = null; // Store userId
+
+    // Edit Mode State
+    private isEditing: boolean = false;
+    private selectedObject: Phaser.GameObjects.Container | Phaser.GameObjects.Rectangle | null = null;
+    private selectionGraphics: Phaser.GameObjects.Graphics | null = null;
+
+    public setEditMode(enabled: boolean) {
+        this.isEditing = enabled;
+        console.log('✏️ Edit Mode set to:', enabled);
+
+        if (enabled) {
+            this.input.setDefaultCursor('default');
+            this.enableEditing();
+        } else {
+            this.input.setDefaultCursor('default');
+            this.disableEditing();
+        }
+    }
+
+    public addRoomMode() {
+        if (!this.isEditing) return;
+        // Simplified: Just spawn a new room at center
+        const newRoom: Room = {
+            id: `room-${Date.now()}`,
+            name: 'New Room',
+            type: 'meeting',
+            x: this.cameras.main.scrollX + 400,
+            y: this.cameras.main.scrollY + 300,
+            width: 300,
+            height: 250,
+            entrances: [{ side: 'bottom', offset: 110, width: 80 }],
+            furniture: []
+        };
+        this.rooms.push(newRoom);
+        this.drawRoom(newRoom);
+    }
+
+    public addObjectMode(type: string) {
+        if (!this.isEditing) return;
+
+        // Define dimensions based on type
+        let width = 30;
+        let height = 30;
+        let collision = true;
+
+        switch (type) {
+            case 'desk': width = 100; height = 50; break;
+            case 'chair': width = 30; height = 30; collision = false; break;
+            case 'sofa': width = 120; height = 50; break;
+            case 'plant': width = 30; height = 30; break;
+            case 'bookshelf': width = 80; height = 20; break;
+            case 'cabinet': width = 60; height = 40; break;
+            case 'meeting-table': width = 180; height = 80; break;
+            case 'whiteboard': width = 100; height = 10; break;
+            case 'projector': width = 40; height = 40; break;
+            case 'bench': width = 100; height = 30; break;
+            case 'tree': width = 80; height = 80; break;
+            case 'fountain': width = 120; height = 120; break;
+            default: width = 30; height = 30;
+        }
+
+        const newFurn: any = {
+            id: `furn-${Date.now()}`,
+            type: type,
+            // Spawn in center of camera view
+            x: this.cameras.main.midPoint.x,
+            y: this.cameras.main.midPoint.y,
+            width: width,
+            height: height,
+            hasCollision: collision
+        };
+
+        // Add to main furniture list (simplified for now, ideally strictly per room or global)
+        if (this.rooms.length > 0) {
+            if (!this.rooms[0].furniture) this.rooms[0].furniture = [];
+            this.rooms[0].furniture.push(newFurn);
+        }
+
+        this.drawFurnitureSprite(newFurn);
+    }
+
+    public rotateSelected() {
+        if (this.selectedObject) {
+            const obj = this.selectedObject;
+
+            // 1. Calculate geometric center for rotation
+            // robustly using getBounds() to account for current rotation
+            const bounds = obj.getBounds();
+            const rotatePoint = { x: bounds.centerX, y: bounds.centerY };
+
+            const rad = Phaser.Math.DegToRad(90);
+
+            // 2. Rotate the main object around its center
+            // Phaser.Actions.RotateAround changes x/y property to orbit the point.
+            Phaser.Actions.RotateAround([obj], rotatePoint, rad);
+            obj.angle += 90; // Rotate visually as well
+
+            // 3. Update data model for the main object
+            const room = obj.getData('roomRef');
+            const item = obj.getData('itemRef');
+
+            // Save new position AND rotation
+            if (room) {
+                room.x = obj.x;
+                room.y = obj.y;
+                room.rotation = obj.angle;
+            }
+            if (item) {
+                item.x = obj.x;
+                item.y = obj.y;
+                item.rotation = obj.angle;
+            }
+
+            // 4. If it's a ROOM, we must also rotate all its furniture
+            if (room && room.furniture) {
+                // Find all furniture sprites belonging to this room
+                const furnitureSprites: any[] = [];
+                const furnitureDataMap = new Map();
+
+                this.children.list.forEach((child: any) => {
+                    const childItem = child.getData ? child.getData('itemRef') : null;
+                    if (childItem && room.furniture?.includes(childItem)) {
+                        furnitureSprites.push(child);
+                        furnitureDataMap.set(child, childItem);
+                    }
+                });
+
+                if (furnitureSprites.length > 0) {
+                    // Rotate all furniture positions around the ROOM CENTER
+                    Phaser.Actions.RotateAround(furnitureSprites, rotatePoint, rad);
+
+                    // Also rotate each furniture piece itself to match new orientation
+                    furnitureSprites.forEach(sprite => {
+                        sprite.angle += 90;
+                        // Update furniture data model
+                        const data = furnitureDataMap.get(sprite);
+                        if (data) {
+                            data.x = sprite.x;
+                            data.y = sprite.y;
+                            data.rotation = sprite.angle; // Save rotation for furniture too!
+                        }
+                    });
+                }
+            }
+
+            // Update selection rect
+            this.updateSelectionGraphics();
+        }
+    }
+
+    public deleteSelected() {
+        if (this.selectedObject) {
+            this.selectedObject.destroy();
+            this.selectionGraphics?.clear();
+            this.selectedObject = null;
+            // TODO: Remove from this.rooms or furniture list
+        }
+    }
+
+    public saveMap() {
+        // Dump to console for now
+        console.log('💾 SAVING MAP DATA:');
+        console.log(JSON.stringify(this.rooms, null, 2));
+        alert('Map layout saved to console!');
+    }
+
+    private enableEditing() {
+        // Make rooms draggable
+        // We need to access the graphics objects we created. 
+        // We probably should have stored them.
+        // Since we didn't store them in properties, we might need to clear and redraw OR find them.
+
+        // Better approach for this task: Redraw everything with interactive containers.
+        this.scene.restart({
+            rooms: this.rooms,
+            vehicles: this.vehicles,
+            socket: this.socket,
+            userId: this.userId,
+            userName: this.userName,
+            spaceId: this.spaceId,
+            isEditing: true // Pass flag to init
+        });
+    }
+
+    private disableEditing() {
+        this.scene.restart({
+            rooms: this.rooms,
+            vehicles: this.vehicles,
+            socket: this.socket,
+            userId: this.userId,
+            userName: this.userName,
+            spaceId: this.spaceId,
+            isEditing: false
+        });
+    }
 
     public updatePlayers(players: Map<string, any>) {
         console.log('🎮 MapScene.updatePlayers called');
@@ -270,6 +468,7 @@ export class MapScene extends Phaser.Scene {
         userId?: string;
         userName?: string;
         spaceId?: string;
+        isEditing?: boolean;
     }) {
         this.rooms = data.rooms || [];
         this.vehicles = data.vehicles || [];
@@ -277,6 +476,13 @@ export class MapScene extends Phaser.Scene {
         this.userId = data.userId || null;
         this.userName = data.userName || 'You';
         this.spaceId = data.spaceId || null;
+        this.isEditing = !!data.isEditing;
+
+        if (this.isEditing) {
+            console.log('✏️ MapScene initialized in EDIT MODE');
+        } else {
+            console.log('🎮 MapScene initialized in GAME MODE');
+        }
 
         // Store user/space data for future use (e.g., multiplayer)
         console.log('MapScene initialized:', {
@@ -284,7 +490,8 @@ export class MapScene extends Phaser.Scene {
             vehicleCount: this.vehicles.length,
             userId: data.userId,
             userName: data.userName,
-            spaceId: data.spaceId
+            spaceId: data.spaceId,
+            isEditing: this.isEditing
         });
     }
 
@@ -300,21 +507,101 @@ export class MapScene extends Phaser.Scene {
         console.log('Creating background...');
         this.createBackground();
         console.log('Drawing rooms...');
-        this.drawAllRooms();
+        this.rooms.forEach(room => this.drawRoom(room));
         console.log('Drawing furniture...');
         this.drawAllFurniture();
         console.log('Drawing vehicles...');
         this.drawVehicles();
         console.log('Creating player...');
-        this.createPlayer();
+        if (!this.isEditing) {
+            this.createPlayer();
+        } else {
+            this.setupCameraForEdit();
+        }
 
-        // Fog of War Layer (High depth to cover everything except UI)
-        // Handled by fogTexture in updateFogOfWar
+        // Fog of War (only in play mode)
+        if (!this.isEditing) {
+            // High depth to cover everything except UI
+            // Handled by fogTexture in updateFogOfWar
+        }
 
-        this.setupCamera();
-        this.setupControls();
-        this.addRoomLabels();
-        this.addInstructions();
+        this.setupCamera(); // Standard camera setup
+        if (!this.isEditing) {
+            this.setupControls();
+        } else {
+            this.input.on('dragstart', (_pointer: any, gameObject: any) => {
+                this.children.bringToTop(gameObject);
+                this.selectedObject = gameObject;
+                // Highlight selection
+                if (this.selectionGraphics) this.selectionGraphics.clear();
+                this.selectionGraphics = this.add.graphics();
+                this.selectionGraphics.lineStyle(2, 0x00ff00);
+
+                this.updateSelectionGraphics();
+                this.emitSelectionChange();
+            });
+
+            this.input.on('drag', (_pointer: any, gameObject: any, dragX: number, dragY: number) => {
+                const oldX = gameObject.x;
+                const oldY = gameObject.y;
+
+                gameObject.x = dragX;
+                gameObject.y = dragY;
+
+                // Update underlying data model
+                if (gameObject.getData('type') === 'room') {
+                    const room = gameObject.getData('roomRef') as Room;
+                    room.x = dragX;
+                    room.y = dragY;
+
+                    // Move Furniture with Room
+                    if (room.furniture) {
+                        const dx = dragX - oldX;
+                        const dy = dragY - oldY;
+
+                        room.furniture.forEach(furn => {
+                            furn.x += dx;
+                            furn.y += dy;
+
+                            // Also need to find the specific furniture sprites/containers and move them!
+                            // Iterate all children of scene to find matching furniture?
+                            // Or better, store a map. For now, let's iterate.
+                            this.children.list.forEach((child: any) => {
+                                if (child.getData && child.getData('type') === 'furniture' && child.getData('itemRef') === furn) {
+                                    child.x += dx;
+                                    child.y += dy;
+                                }
+                            });
+                        });
+                    }
+                } else if (gameObject.getData('type') === 'furniture') {
+                    const item = gameObject.getData('itemRef') as any;
+                    item.x = dragX;
+                    item.y = dragY;
+                }
+
+                // Update selection graphics position
+                if (this.selectedObject === gameObject) {
+                    this.updateSelectionGraphics();
+                }
+            });
+
+            this.input.on('pointerdown', (_pointer: any, gameObjects: any[]) => {
+                if (gameObjects.length === 0) {
+                    // Clicked background
+                    if (_pointer.leftButtonDown()) {
+                        this.selectedObject = null;
+                        this.selectionGraphics?.clear();
+                        this.emitSelectionChange();
+                    }
+                }
+            });
+        }
+
+        if (!this.isEditing) {
+            this.addRoomLabels();
+            this.addInstructions();
+        }
 
         // Add collision between player and walls
         if (this.player && this.walls) {
@@ -360,6 +647,9 @@ export class MapScene extends Phaser.Scene {
 
     update(time: number) {
         if (!this.player) return;
+
+        // In edit mode, disable normal movement
+        if (this.isEditing) return;
 
         const speed = this.currentVehicle ? this.vehicleSpeed : this.playerSpeed;
         const body = this.player.body as Phaser.Physics.Arcade.Body;
@@ -461,11 +751,205 @@ export class MapScene extends Phaser.Scene {
         this.checkProximity();
 
         const currentRoom = this.getCurrentRoom(this.player.x, this.player.y);
-
-        // Vehicle interaction (omitted check)
-        // ...
-
         this.updateFogOfWar(currentRoom);
+    }
+
+    setupCameraForEdit() {
+        // Zoom on scroll (Center on pointer or screen center)
+        this.input.on('wheel', (pointer: any, _gameObjects: any, _deltaX: number, deltaY: number, _deltaZ: number) => {
+            const zoom = this.cameras.main.zoom;
+            const newZoom = deltaY > 0 ? zoom * 0.9 : zoom * 1.1;
+
+            // To zoom towards pointer, we'd need more complex logic manipulating scrollX/Y.
+            // For now, let's just ensure it zooms "centered" on the view, giving a better feeling than top-left.
+            // Phaser default zoom is centered on camera center if we don't change origin (default is 0.5, 0.5).
+
+            this.cameras.main.useBounds = false; // Disable bounds during edit to allow free movement
+            this.cameras.main.setZoom(Phaser.Math.Clamp(newZoom, 0.1, 2));
+        });
+
+        // Pan on right-click drag
+        this.input.on('pointermove', (pointer: any) => {
+            if (pointer.rightButtonDown()) {
+                this.cameras.main.scrollX -= (pointer.x - pointer.prevPosition.x) / this.cameras.main.zoom;
+                this.cameras.main.scrollY -= (pointer.y - pointer.prevPosition.y) / this.cameras.main.zoom;
+            }
+        });
+
+        // Prevent context menu on right click
+        this.game.canvas.oncontextmenu = (e) => e.preventDefault();
+    }
+
+    // Helper to emit selection
+    private emitSelectionChange() {
+        this.game.events.emit('selection-change', {
+            hasSelection: !!this.selectedObject,
+            type: this.selectedObject?.getData('type')
+        });
+    }
+
+    updateSelectionGraphics() {
+        if (!this.selectedObject || !this.selectionGraphics) return;
+
+        this.selectionGraphics.clear();
+        this.selectionGraphics.lineStyle(2, 0x00ff00);
+
+        // Draw a rect at (0,0) width/height, then apply matrix transform to match object?
+        // Or manually calculate corners.
+
+        // Easier: Use strokeRect but wrap it in a command that applies rotation? 
+        // Graphics doesn't support rotation of individual commands easily without changing localTransform.
+        // But we want to draw in World Space.
+
+        // Let's calculate the 4 corners of the rotated object around its Top-Left + Offset?
+        // Wait, the object is at X,Y with Angle. Origin is 0,0.
+
+        const obj = this.selectedObject;
+        const x = obj.x;
+        const y = obj.y;
+        const w = obj.width;
+        const h = obj.height;
+        const angle = Phaser.Math.DegToRad(obj.angle);
+
+        // Corners relative to (x,y) BEFORE rotation
+        // p0: 0,0
+        // p1: w,0
+        // p2: w,h
+        // p3: 0,h
+
+        // Apply rotation around (x,y) if origin is 0,0? No, rotation is around origin.
+        // If origin is 0,0, then (0,0) stays at (x,y). (w,0) rotates.
+
+        const p0 = { x: 0, y: 0 };
+        const p1 = { x: w, y: 0 };
+        const p2 = { x: w, y: h };
+        const p3 = { x: 0, y: h };
+
+        const rotatePoint = (p: { x: number, y: number }) => {
+            const tx = p.x * Math.cos(angle) - p.y * Math.sin(angle);
+            const ty = p.x * Math.sin(angle) + p.y * Math.cos(angle);
+            return { x: x + tx, y: y + ty };
+        };
+
+        const r0 = rotatePoint(p0);
+        const r1 = rotatePoint(p1);
+        const r2 = rotatePoint(p2);
+        const r3 = rotatePoint(p3);
+
+        this.selectionGraphics.beginPath();
+        this.selectionGraphics.moveTo(r0.x, r0.y);
+        this.selectionGraphics.lineTo(r1.x, r1.y);
+        this.selectionGraphics.lineTo(r2.x, r2.y);
+        this.selectionGraphics.lineTo(r3.x, r3.y);
+        this.selectionGraphics.closePath();
+        this.selectionGraphics.strokePath();
+    }
+
+    // Helper to draw a drag handle (move icon) on draggable objects
+    addDragHandle(container: Phaser.GameObjects.Container, width: number, height: number) {
+        const graphics = this.add.graphics();
+        // Draw centered horizontally, but 'on top' vertically (above the object)
+        const cx = width / 2;
+        const cy = -30;
+
+        // Background Circle (White with Shadow)
+        graphics.fillStyle(0x000000, 0.3); // Shadow
+        graphics.fillCircle(cx + 2, cy + 2, 12);
+        graphics.fillStyle(0xffffff, 1);
+        graphics.fillCircle(cx, cy, 12);
+        graphics.lineStyle(2, 0x2196F3, 1); // Blue border
+        graphics.strokeCircle(cx, cy, 12);
+
+        // Cross Arrows Icon (Blue)
+        graphics.lineStyle(2, 0x2196F3, 1);
+
+        // Horizontal arrow
+        graphics.beginPath();
+        graphics.moveTo(cx - 6, cy);
+        graphics.lineTo(cx + 6, cy);
+        graphics.strokePath();
+
+        // Vertical arrow
+        graphics.beginPath();
+        graphics.moveTo(cx, cy - 6);
+        graphics.lineTo(cx, cy + 6);
+        graphics.strokePath();
+
+        // Arrow heads (simplified as dots or tiny lines)
+        // Left
+        graphics.beginPath(); graphics.moveTo(cx - 6, cy); graphics.lineTo(cx - 4, cy - 2); graphics.strokePath();
+        graphics.beginPath(); graphics.moveTo(cx - 6, cy); graphics.lineTo(cx - 4, cy + 2); graphics.strokePath();
+        // Right
+        graphics.beginPath(); graphics.moveTo(cx + 6, cy); graphics.lineTo(cx + 4, cy - 2); graphics.strokePath();
+        graphics.beginPath(); graphics.moveTo(cx + 6, cy); graphics.lineTo(cx + 4, cy + 2); graphics.strokePath();
+        // Top
+        graphics.beginPath(); graphics.moveTo(cx, cy - 6); graphics.lineTo(cx - 2, cy - 4); graphics.strokePath();
+        graphics.beginPath(); graphics.moveTo(cx, cy - 6); graphics.lineTo(cx + 2, cy - 4); graphics.strokePath();
+        // Bottom
+        graphics.beginPath(); graphics.moveTo(cx, cy + 6); graphics.lineTo(cx - 2, cy + 4); graphics.strokePath();
+        graphics.beginPath(); graphics.moveTo(cx, cy + 6); graphics.lineTo(cx + 2, cy + 4); graphics.strokePath();
+
+        container.add(graphics);
+    }
+
+    drawRoom(room: Room) {
+        // Create container for the room
+        const container = this.add.container(room.x, room.y);
+        container.setSize(room.width, room.height);
+
+        // Apply saved rotation
+        if (room.rotation) {
+            container.setAngle(room.rotation);
+        }
+
+        // Store reference to room data
+        container.setData('roomRef', room);
+
+        // Edit Mode specific interactive setup
+        if (this.isEditing) {
+            // Fix Hit Area
+            container.setInteractive(new Phaser.Geom.Rectangle(0, 0, room.width, room.height), Phaser.Geom.Rectangle.Contains);
+            this.input.setDraggable(container);
+            container.setData('type', 'room');
+
+            // Draw Simplified Edit Mode Visuals
+            const g = this.add.graphics();
+
+            // Floor
+            const floorColors: Record<string, number> = {
+                reception: 0xffffff,
+                staff: 0xe3f2fd,
+                meeting: 0xeefebe,
+                admin: 0xf3e5f5,
+                garden: 0xe8f5e9,
+                parking: 0xe0e0e0
+            };
+            const color = floorColors[room.type] || 0xffffff;
+            g.fillStyle(color, 0.4);
+            g.fillRect(0, 0, room.width, room.height);
+
+            // Border
+            g.lineStyle(2, 0xc0c0c0, 0.5);
+            g.strokeRect(4, 4, room.width - 8, room.height - 8);
+
+            // Outline for visibility
+            g.lineStyle(6, 0x424242);
+            g.strokeRect(0, 0, room.width, room.height);
+
+            // Name
+            const text = this.add.text(room.width / 2, room.height / 2, room.name, { color: '#000', fontSize: '16px' }).setOrigin(0.5);
+
+            container.add([g, text]);
+
+            // Add Drag Handle (Edit Mode only)
+            this.addDragHandle(container, room.width, room.height);
+        } else {
+            // Game Mode Drawing (Full Detail)
+            // Now passing container to helper functions which draw at local 0,0
+            this.drawRoomFloor(container, room);
+            this.drawRoomWalls(container, room);
+            this.drawDoors(container, room);
+        }
     }
 
     private getCurrentRoom(x: number, y: number): Room | null {
@@ -551,68 +1035,78 @@ export class MapScene extends Phaser.Scene {
 
     drawAllRooms() {
         this.rooms.forEach(room => {
-            this.drawRoomFloor(room);
-            this.drawRoomWalls(room);
-            this.drawDoors(room);
+            this.drawRoom(room);
         });
     }
 
-    drawRoomFloor(room: Room) {
+    drawRoomFloor(container: Phaser.GameObjects.Container, room: Room) {
         const graphics = this.add.graphics();
+        container.add(graphics);
 
-        // Premium Room Colors (Subtle overlays on marble)
         const floorColors: Record<string, number> = {
-            reception: 0xffffff, // Pure marble
-            staff: 0xe3f2fd, // Very light blue tint
-            meeting: 0xeefebe, // Very light beige/gold tint
-            admin: 0xf3e5f5, // Very light purple tint
-            garden: 0xe8f5e9, // Very light green tint
-            parking: 0xe0e0e0 // Light gray
+            reception: 0xffffff,
+            staff: 0xe3f2fd,
+            meeting: 0xeefebe,
+            admin: 0xf3e5f5,
+            garden: 0xe8f5e9,
+            parking: 0xe0e0e0
         };
 
         const color = floorColors[room.type] || 0xffffff;
 
         // Draw room floor with low opacity to blend with marble
         graphics.fillStyle(color, 0.4);
-        graphics.fillRect(room.x, room.y, room.width, room.height);
+        // Draw relative to container (0,0)
+        graphics.fillRect(0, 0, room.width, room.height);
 
         // Decorative border for rooms
         if (room.type !== 'parking' && room.type !== 'garden') {
             graphics.lineStyle(2, 0xc0c0c0, 0.5);
-            graphics.strokeRect(room.x + 4, room.y + 4, room.width - 8, room.height - 8);
+            graphics.strokeRect(4, 4, room.width - 8, room.height - 8);
         }
     }
 
-    drawRoomWalls(room: Room) {
+    drawRoomWalls(container: Phaser.GameObjects.Container, room: Room) {
         const graphics = this.add.graphics();
+        container.add(graphics);
         graphics.setDepth(10);
         const wallThickness = 12;
         const wallColor = 0x424242;
 
+        // Use local coordinates (0, 0 is top-left of room)
+        const x = 0;
+        const y = 0;
+
         // Draw walls with gaps for entrances
         // Top Wall
-        this.drawWallSegment(graphics, room.x, room.y - wallThickness, room.width, wallThickness, 'top', room.entrances);
+        this.drawWallSegment(graphics, x, y - wallThickness, room.width, wallThickness, 'top', room.entrances);
         // Bottom Wall
-        this.drawWallSegment(graphics, room.x, room.y + room.height, room.width, wallThickness, 'bottom', room.entrances);
+        this.drawWallSegment(graphics, x, y + room.height, room.width, wallThickness, 'bottom', room.entrances);
         // Left Wall
-        this.drawWallSegment(graphics, room.x - wallThickness, room.y, wallThickness, room.height, 'left', room.entrances);
+        this.drawWallSegment(graphics, x - wallThickness, y, wallThickness, room.height, 'left', room.entrances);
         // Right Wall
-        this.drawWallSegment(graphics, room.x + room.width, room.y, wallThickness, room.height, 'right', room.entrances);
+        this.drawWallSegment(graphics, x + room.width, y, wallThickness, room.height, 'right', room.entrances);
 
         // Draw corners to fill gaps
         graphics.fillStyle(wallColor, 1);
         // Top-Left
-        graphics.fillRect(room.x - wallThickness, room.y - wallThickness, wallThickness, wallThickness);
+        graphics.fillRect(x - wallThickness, y - wallThickness, wallThickness, wallThickness);
         // Top-Right
-        graphics.fillRect(room.x + room.width, room.y - wallThickness, wallThickness, wallThickness);
+        graphics.fillRect(x + room.width, y - wallThickness, wallThickness, wallThickness);
         // Bottom-Left
-        graphics.fillRect(room.x - wallThickness, room.y + room.height, wallThickness, wallThickness);
+        graphics.fillRect(x - wallThickness, y + room.height, wallThickness, wallThickness);
         // Bottom-Right
-        graphics.fillRect(room.x + room.width, room.y + room.height, wallThickness, wallThickness);
+        graphics.fillRect(x + room.width, y + room.height, wallThickness, wallThickness);
 
         // Create physics bodies for walls (excluding entrances)
+        // Note: createWallColliders still needs world coordinates if physics bodies are not in container.
+        // Physics bodies in containers is complex. 
+        // Strategy: calculate world coordinates of walls based on container rotation?
+        // For now, let's keep colliders non-rotating or handle it separately.
+        // Or updated createWallColliders to use transform?
         this.createWallColliders(room, wallThickness);
     }
+
 
     drawWallSegment(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, side: string, entrances: Entrance[]) {
         const wallColor = 0x424242;
@@ -735,14 +1229,16 @@ export class MapScene extends Phaser.Scene {
         }
     }
 
-    drawDoors(room: Room) {
+    drawDoors(container: Phaser.GameObjects.Container, room: Room) {
         const g = this.add.graphics();
+        container.add(g);
         const doorFrameColor = 0x5d4037; // Dark wood
         const doorColor = 0x8d6e63; // Light wood
 
         room.entrances.forEach(entrance => {
-            let x = room.x;
-            let y = room.y;
+            // Local Coordinates
+            let x = 0;
+            let y = 0;
             let w = 0;
             let h = 0;
 
@@ -843,6 +1339,22 @@ export class MapScene extends Phaser.Scene {
         }
 
         container.add(graphics);
+        container.setSize(item.width, item.height); // Define hit area size
+
+        // Apply saved rotation if exists
+        if (item.rotation) {
+            container.setAngle(item.rotation);
+        }
+
+        if (this.isEditing) {
+            container.setInteractive();
+            this.input.setDraggable(container);
+            container.setData('type', 'furniture');
+            container.setData('itemRef', item);
+
+            // Add Drag Handle (Edit Mode only)
+            this.addDragHandle(container, item.width, item.height);
+        }
     }
 
     // ... (Keep existing furniture drawing methods: drawDesk, drawChair, drawSofa, etc.)

@@ -13,9 +13,10 @@ interface PhaserGameProps {
     onPositionUpdate?: (position: { x: number, y: number, direction: string, isWalking: boolean, roomId: string | null }) => void;
     isVideoOn?: boolean;
     isAudioOn?: boolean;
+    isEditing?: boolean;
 }
 
-const PhaserGame: React.FC<PhaserGameProps> = ({ socket, userId, userName, spaceId, players, onPositionUpdate, isVideoOn, isAudioOn }) => {
+const PhaserGame: React.FC<PhaserGameProps> = ({ socket, userId, userName, spaceId, players, onPositionUpdate, isVideoOn, isAudioOn, isEditing }) => {
     const gameRef = useRef<Phaser.Game | null>(null);
     const sceneRef = useRef<MapScene | null>(null);
 
@@ -124,6 +125,23 @@ const PhaserGame: React.FC<PhaserGameProps> = ({ socket, userId, userName, space
             }
         }
     }, [socket, userId, userName, spaceId]);
+
+    // Handle Edit Mode
+    useEffect(() => {
+        if (sceneRef.current) {
+            sceneRef.current.setEditMode(!!isEditing);
+        }
+    }, [isEditing]);
+
+    // Expose game instance for external control (EditControlPanel)
+    useEffect(() => {
+        if (gameRef.current) {
+            (window as any).phaserGame = gameRef.current;
+        }
+        return () => {
+            delete (window as any).phaserGame;
+        };
+    }, []);
 
     return (
         <div
